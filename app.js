@@ -162,27 +162,22 @@ async function fetchBTC() {
 }
 
 // ============================================================
-//  FETCH S&P500 & OIL via Yahoo Finance + allorigins proxy
+//  FETCH S&P500 & OIL via local server API (server.js)
 // ============================================================
-async function fetchYahoo(ticker) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=5d`;
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
-  const wrapper = await res.json();
-  return JSON.parse(wrapper.contents);
+async function fetchMarket(ticker) {
+  const res = await fetch(`/api/market?ticker=${encodeURIComponent(ticker)}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 async function fetchSP500() {
   try {
-    const data = await fetchYahoo('^GSPC');
-    const result = data.chart.result[0];
-    const quotes = result.indicators.quote[0].close.filter(Boolean);
-    const price = quotes[quotes.length - 1];
-    const prevClose = result.meta.previousClose || quotes[quotes.length - 2];
-    const change = ((price - prevClose) / prevClose) * 100;
-    updateCard('sp500-card', 'sp500-price', 'sp500-change', price, change, '$', prevSP, 'sp500-spark');
-    sparkline('sp500-spark', quotes, change >= 0 ? '#3fb950' : '#f85149');
-    prevSP = price;
+    const data = await fetchMarket('^GSPC');
+    updateCard('sp500-card', 'sp500-price', 'sp500-change', data.price, data.change, '$', prevSP, 'sp500-spark');
+    sparkline('sp500-spark', data.history, data.change >= 0 ? '#3fb950' : '#f85149');
+    prevSP = data.price;
   } catch (e) {
     document.getElementById('sp500-price').textContent = 'Error';
     console.warn('S&P500 fetch failed:', e.message);
@@ -191,15 +186,10 @@ async function fetchSP500() {
 
 async function fetchOil() {
   try {
-    const data = await fetchYahoo('CL=F');
-    const result = data.chart.result[0];
-    const quotes = result.indicators.quote[0].close.filter(Boolean);
-    const price = quotes[quotes.length - 1];
-    const prevClose = result.meta.previousClose || quotes[quotes.length - 2];
-    const change = ((price - prevClose) / prevClose) * 100;
-    updateCard('oil-card', 'oil-price', 'oil-change', price, change, '$', prevOil, 'oil-spark');
-    sparkline('oil-spark', quotes, '#e3693a');
-    prevOil = price;
+    const data = await fetchMarket('CL=F');
+    updateCard('oil-card', 'oil-price', 'oil-change', data.price, data.change, '$', prevOil, 'oil-spark');
+    sparkline('oil-spark', data.history, '#e3693a');
+    prevOil = data.price;
   } catch (e) {
     document.getElementById('oil-price').textContent = 'Error';
     console.warn('Oil fetch failed:', e.message);
