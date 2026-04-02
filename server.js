@@ -176,17 +176,64 @@ app.post('/api/telegram/webhook', async (req, res) => {
   if (!msg) return;
   const text = (msg.text || '').trim().toLowerCase();
   const chatId = msg.chat.id.toString();
-  if (chatId !== TG_CHAT_ID) return; // only allowed chat
 
-  if (text === '/briefing' || text === '/status') {
-    await sendDailyBriefing();
+  // Helper to send to any chat
+  async function reply(txt) {
+    const body = JSON.stringify({ chat_id: chatId, text: txt, parse_mode: 'HTML' });
+    return new Promise(resolve => {
+      const req2 = https.request({
+        hostname: 'api.telegram.org',
+        path: `/bot${TG_TOKEN}/sendMessage`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, r => { r.resume(); resolve(); });
+      req2.on('error', resolve);
+      req2.write(body);
+      req2.end();
+    });
+  }
+
+  const warStart = new Date('2026-02-28T00:00:00Z');
+  const dayNum = Math.floor((Date.now() - warStart) / 86400000) + 1;
+
+  if (text === '/start') {
+    await reply(
+      `🚨 <b>Welcome to War Monitor Bot</b>\n\n` +
+      `Tracking the 2026 US-Israel vs Iran War in real time.\n\n` +
+      `<b>Commands:</b>\n` +
+      `/briefing — Full market + war status\n` +
+      `/status — Same as /briefing\n` +
+      `/help — Show commands\n\n` +
+      `📅 Currently: War Day ${dayNum}\n` +
+      `🔴 Status: ACTIVE  |  Hormuz: CLOSED\n\n` +
+      `🌐 <a href="https://vigilant-forgiveness-production-6c0f.up.railway.app">Open Live Dashboard</a>`
+    );
+  } else if (text === '/briefing' || text === '/status') {
+    const { btcLine, spLine, oilLine } = await getMarketSnapshot();
+    await reply([
+      `🚨 <b>WAR MONITOR — DAY ${dayNum}</b>`,
+      `📅 ${new Date().toUTCString()}`,
+      '',
+      `⚔️ <b>2026 Iran War Status</b>`,
+      `🔴 War: ACTIVE  |  Strait of Hormuz: CLOSED`,
+      `🔴 Ceasefire: NONE  |  Nuclear Sites: STRUCK`,
+      '',
+      `📈 <b>MARKET IMPACT</b>`,
+      btcLine, spLine, oilLine,
+      '',
+      `🎯 Missiles launched (2026): ~500+`,
+      `✅ Intercepted: ~450 (~90%)`,
+      '',
+      `🌐 <a href="https://vigilant-forgiveness-production-6c0f.up.railway.app">Open Live Dashboard</a>`,
+    ].join('\n'));
   } else if (text === '/help') {
-    await sendTelegram(
+    await reply(
       '🚨 <b>War Monitor Bot</b>\n\n' +
-      '/briefing — Get full market + war status briefing\n' +
+      '/briefing — Full market + war status\n' +
       '/status — Same as /briefing\n' +
       '/help — Show this message\n\n' +
-      'Daily briefing sent automatically at 09:00 UTC.'
+      `📅 War Day ${dayNum} | 🔴 Conflict: ACTIVE\n\n` +
+      `🌐 <a href="https://vigilant-forgiveness-production-6c0f.up.railway.app">Live Dashboard</a>`
     );
   }
 });
