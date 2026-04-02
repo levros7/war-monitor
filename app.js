@@ -146,15 +146,11 @@ function updateCard(id, priceEl, changeEl, price, change, symbol, prev, sparkId,
 // ============================================================
 async function fetchBTC() {
   try {
-    const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_sparkline_7d=false',
-      { signal: AbortSignal.timeout(8000) }
-    );
+    const res = await fetch('/api/btc', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const price = data.bitcoin.usd;
-    const change = data.bitcoin.usd_24h_change;
-    updateCard('btc-card', 'btc-price', 'btc-change', price, change, '$', prevBTC, 'btc-spark');
-    prevBTC = price;
+    updateCard('btc-card', 'btc-price', 'btc-change', data.price, data.change, '$', prevBTC, 'btc-spark');
+    prevBTC = data.price;
   } catch (e) {
     document.getElementById('btc-price').textContent = 'Error';
     console.warn('BTC fetch failed:', e.message);

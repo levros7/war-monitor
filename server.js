@@ -48,4 +48,16 @@ app.get('/api/market', async (req, res) => {
   }
 });
 
+// /api/btc — Bitcoin price via CoinGecko
+app.get('/api/btc', async (req, res) => {
+  try {
+    const data = await fetchJSON(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
+    );
+    res.json({ price: data.bitcoin.usd, change: data.bitcoin.usd_24h_change });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`War Monitor running on port ${PORT}`));
