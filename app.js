@@ -315,6 +315,77 @@ function renderNewsCards(articles, grid, isFallback) {
 }
 
 // ============================================================
+//  FEAR & GREED INDEX
+// ============================================================
+function fgColor(value) {
+  if (value <= 24) return '#f85149';
+  if (value <= 49) return '#e3693a';
+  if (value === 50) return '#d29922';
+  if (value <= 74) return '#3fb950';
+  return '#58a6ff';
+}
+
+function renderFearGreed(value, classification, history) {
+  const color = fgColor(value);
+  const arcLen = 282.7;
+  const offset = arcLen - (value / 100) * arcLen;
+  const needleAngle = -90 + (value / 100) * 180;
+
+  const arc    = document.getElementById('fg-arc');
+  const needle = document.getElementById('fg-needle');
+  const valTxt = document.getElementById('fg-value-text');
+  const cls    = document.getElementById('fg-classification');
+  const sub    = document.getElementById('fg-subtext');
+
+  if (arc) {
+    arc.setAttribute('stroke', color);
+    arc.setAttribute('stroke-dashoffset', offset);
+  }
+  if (needle) needle.setAttribute('transform', `rotate(${needleAngle})`);
+  if (valTxt) { valTxt.textContent = value; valTxt.setAttribute('fill', color); }
+  if (cls)    { cls.textContent = classification.toUpperCase(); cls.style.color = color; }
+  if (sub)    sub.textContent = `Market Sentiment · Updated live · ${value <= 49 ? 'War-driven risk-off' : 'Risk appetite present'}`;
+
+  // Highlight active zone
+  document.querySelectorAll('.fg-zone').forEach(z => {
+    const [lo, hi] = z.dataset.range.split('-').map(Number);
+    z.classList.toggle('fg-zone-active', value >= lo && value <= hi);
+  });
+
+  // Sparkline
+  if (history && history.length > 1) {
+    const el = document.getElementById('fg-spark');
+    if (el) {
+      const w = 300, h = 40;
+      const min = Math.min(...history);
+      const max = Math.max(...history) || 100;
+      const range = max - min || 1;
+      const pts = history.map((v, i) => {
+        const x = (i / (history.length - 1)) * w;
+        const y = h - ((v - min) / range) * (h - 4) - 2;
+        return `${x},${y}`;
+      }).join(' ');
+      el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%">
+        <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+      </svg>`;
+    }
+  }
+}
+
+async function fetchFearGreed() {
+  try {
+    const res = await fetch('/api/fear-greed', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderFearGreed(data.value, data.classification, data.history);
+  } catch (e) {
+    const cls = document.getElementById('fg-classification');
+    if (cls) cls.textContent = 'UNAVAILABLE';
+    console.warn('Fear & Greed fetch failed:', e.message);
+  }
+}
+
+// ============================================================
 //  UPDATE TIMESTAMP
 // ============================================================
 function updateTimestamp() {
@@ -345,7 +416,7 @@ function animateCounter(id, target, duration = 1200) {
 // ============================================================
 async function refresh() {
   updateTimestamp();
-  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchNews(), fetchAndRenderTimeline()]);
+  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchFearGreed(), fetchNews(), fetchAndRenderTimeline()]);
   checkWarStatus();
 }
 

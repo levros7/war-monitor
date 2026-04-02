@@ -65,6 +65,9 @@
       </div>
     </div>
 
+    <!-- FEAR & GREED BANNER -->
+    <div id="fg-banner" style="display:none"></div>
+
     <!-- MARKETS GRID -->
     <section class="section-title">MARKET IMPACT</section>
     <div class="markets-grid">
@@ -99,6 +102,66 @@
         <div class="card-sparkline" id="oil-spark"></div>
       </div>
 
+    </div>
+
+    <!-- FEAR & GREED INDEX -->
+    <section class="section-title">FEAR &amp; GREED INDEX
+      <span class="news-note">Crypto market sentiment · Alternative.me</span>
+    </section>
+    <div class="fg-wrap">
+      <div class="fg-gauge-area">
+        <svg id="fg-gauge" viewBox="0 0 220 120" class="fg-svg">
+          <!-- background arc -->
+          <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#21262d" stroke-width="14" stroke-linecap="round"/>
+          <!-- value arc -->
+          <path id="fg-arc" d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#f85149" stroke-width="14"
+            stroke-linecap="round" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
+          <!-- needle -->
+          <line id="fg-needle" x1="110" y1="110" x2="110" y2="30" stroke="#e6edf3" stroke-width="2" stroke-linecap="round"
+            transform-origin="110 110" transform="rotate(0)"/>
+          <circle cx="110" cy="110" r="5" fill="#e6edf3"/>
+          <!-- labels -->
+          <text x="18"  y="126" font-size="8" fill="#f85149" font-family="monospace">FEAR</text>
+          <text x="170" y="126" font-size="8" fill="#3fb950" font-family="monospace">GREED</text>
+          <!-- value text -->
+          <text id="fg-value-text" x="110" y="92" font-size="32" font-weight="bold" fill="#e6edf3" text-anchor="middle">—</text>
+        </svg>
+        <div id="fg-classification" class="fg-class">LOADING</div>
+        <div id="fg-subtext" class="fg-sub">Market Sentiment Index · 0 = Extreme Fear · 100 = Extreme Greed</div>
+      </div>
+      <div class="fg-details">
+        <div class="fg-zone-grid">
+          <div class="fg-zone" data-range="0-24">
+            <span class="fg-dot" style="background:#f85149"></span>
+            <span class="fg-zone-label">0–24</span>
+            <span class="fg-zone-name">Extreme Fear</span>
+          </div>
+          <div class="fg-zone" data-range="25-49">
+            <span class="fg-dot" style="background:#e3693a"></span>
+            <span class="fg-zone-label">25–49</span>
+            <span class="fg-zone-name">Fear</span>
+          </div>
+          <div class="fg-zone" data-range="50-50">
+            <span class="fg-dot" style="background:#d29922"></span>
+            <span class="fg-zone-label">50</span>
+            <span class="fg-zone-name">Neutral</span>
+          </div>
+          <div class="fg-zone" data-range="51-74">
+            <span class="fg-dot" style="background:#3fb950"></span>
+            <span class="fg-zone-label">51–74</span>
+            <span class="fg-zone-name">Greed</span>
+          </div>
+          <div class="fg-zone" data-range="75-100">
+            <span class="fg-dot" style="background:#58a6ff"></span>
+            <span class="fg-zone-label">75–100</span>
+            <span class="fg-zone-name">Extreme Greed</span>
+          </div>
+        </div>
+        <div class="fg-spark-wrap">
+          <div class="fg-spark-label">7-DAY TREND</div>
+          <div id="fg-spark" class="fg-spark"></div>
+        </div>
+      </div>
     </div>
 
     <!-- MISSILE MAP -->

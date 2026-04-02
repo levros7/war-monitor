@@ -386,6 +386,109 @@ h1 {
 
 .card-sparkline svg { width: 100%; height: 100%; }
 
+/* ===== FEAR & GREED ===== */
+.fg-wrap {
+  display: flex;
+  gap: 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.fg-gauge-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 220px;
+}
+
+.fg-svg { width: 220px; height: 120px; }
+
+.fg-class {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-top: 8px;
+  color: #f85149;
+}
+
+.fg-sub {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  text-align: center;
+  max-width: 220px;
+}
+
+.fg-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fg-zone-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fg-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.fg-zone.fg-zone-active {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+}
+
+.fg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fg-zone-label {
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 36px;
+  font-family: var(--font);
+}
+
+.fg-zone-name {
+  font-size: 11px;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+.fg-zone.fg-zone-active .fg-zone-name { font-weight: 700; }
+
+.fg-spark-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+.fg-spark-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+
+.fg-spark { height: 40px; width: 100%; }
+
+@media (max-width: 650px) {
+  .fg-wrap { flex-direction: column; }
+  .fg-gauge-area { min-width: unset; }
+}
+
 /* ===== MISSILE MAP ===== */
 .map-wrap {
   position: relative;

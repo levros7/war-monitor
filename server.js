@@ -276,6 +276,22 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
 if (TG_TOKEN && TG_CHAT_ID) scheduleDailyBriefing();
 
+// /api/fear-greed — Crypto Fear & Greed Index (alternative.me, no key needed)
+app.get('/api/fear-greed', async (req, res) => {
+  try {
+    const data = await fetchJSON('https://api.alternative.me/fng/?limit=7');
+    const items = data.data || [];
+    const current = items[0];
+    res.json({
+      value: parseInt(current.value),
+      classification: current.value_classification,
+      history: items.map(i => parseInt(i.value)).reverse(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // /api/events — live key events from GNews
 const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
 app.get('/api/events', async (req, res) => {
