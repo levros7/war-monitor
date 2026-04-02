@@ -203,6 +203,25 @@ h1 {
   50%       { box-shadow: 0 0 24px rgba(248,81,73,0.8), inset 0 0 12px rgba(248,81,73,0.25); }
 }
 
+/* ===== PRICE ALERT BANNER ===== */
+#price-alert-banner {
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border: 1px solid var(--red);
+  background: rgba(248,81,73,0.15);
+  color: var(--red);
+  animation: banner-flash 0.6s ease-in-out 3;
+}
+
+@keyframes banner-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* ===== WAR STATUS BAR ===== */
 .status-bar {
   display: flex;
@@ -635,3 +654,44 @@ footer {
 
 .flash-up   { animation: flash-up 1s ease; }
 .flash-down { animation: flash-down 1s ease; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 600px) {
+  .app { padding: 10px; }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .header-right { align-self: flex-end; }
+
+  h1 { font-size: 18px; }
+
+  .status-bar {
+    gap: 6px;
+  }
+
+  .status-item {
+    padding: 8px 10px;
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .markets-grid { grid-template-columns: 1fr; }
+
+  .map-wrap { height: 260px; }
+
+  #conflict-map { height: 260px; }
+
+  .strike-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .strike-big { font-size: 36px; }
+
+  .news-grid { grid-template-columns: 1fr; }
+
+  .section-title { font-size: 10px; }
+
+  footer { flex-direction: column; gap: 4px; text-align: center; }
+}

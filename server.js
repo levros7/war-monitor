@@ -61,6 +61,42 @@ app.get('/api/btc', async (req, res) => {
 });
 
 // ============================================================
+//  WAR STATUS API — ceasefire detection + live strike count
+// ============================================================
+let warStatus = {
+  ceasefire: false,
+  ceasefireHeadline: '',
+  strikesDetected: 0,
+  lastChecked: null,
+};
+
+app.get('/api/war-status', (req, res) => res.json(warStatus));
+
+// Scan latest news for ceasefire signals and missile mentions
+async function scanNewsForWarStatus() {
+  const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
+  if (!GNEWS_KEY) return;
+  try {
+    const q = encodeURIComponent('Iran Israel war ceasefire missile 2026');
+    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
+    const data = await fetchJSON(url);
+    const articles = data.articles || [];
+    const CEASEFIRE = ['ceasefire','cease fire','peace deal','truce','armistice','agreement reached'];
+    const MISSILES  = ['missile','ballistic','rocket','drone','barrage','salvo','strike','attack'];
+    const cfHit = articles.find(a => CEASEFIRE.some(k => a.title.toLowerCase().includes(k)));
+    const missileCount = articles.filter(a => MISSILES.some(k => a.title.toLowerCase().includes(k))).length;
+    warStatus.ceasefire = !!cfHit;
+    warStatus.ceasefireHeadline = cfHit ? cfHit.title : '';
+    warStatus.strikesDetected += missileCount;
+    warStatus.lastChecked = new Date().toISOString();
+  } catch (e) { /* silent */ }
+}
+
+// Scan every 30 minutes
+setInterval(scanNewsForWarStatus, 30 * 60 * 1000);
+scanNewsForWarStatus();
+
+// ============================================================
 //  TELEGRAM BOT
 // ============================================================
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN || '';

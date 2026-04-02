@@ -136,6 +136,50 @@ function sparkline(containerId, values, color) {
 // ============================================================
 //  MARKET CARD UPDATER
 // ============================================================
+//  PRICE ALERT BANNER
+// ============================================================
+const _baselinePrices = {};
+
+function checkPriceAlert(label, ticker, price, change) {
+  if (!_baselinePrices[ticker]) { _baselinePrices[ticker] = price; return; }
+  const move = ((price - _baselinePrices[ticker]) / _baselinePrices[ticker]) * 100;
+  if (Math.abs(move) >= 3) {
+    const dir = move > 0 ? '▲ SURGE' : '▼ DROP';
+    const banner = document.getElementById('price-alert-banner');
+    banner.textContent = `⚠️ ${label} ${dir} ${Math.abs(move).toFixed(1)}% — WAR MARKET ALERT`;
+    banner.style.display = 'block';
+    banner.style.animation = 'none';
+    void banner.offsetWidth;
+    banner.style.animation = 'banner-flash 0.6s ease-in-out 3';
+    setTimeout(() => { banner.style.display = 'none'; }, 10000);
+  }
+}
+
+// ============================================================
+//  CEASEFIRE CHECKER
+// ============================================================
+async function checkWarStatus() {
+  try {
+    const res = await fetch('/api/war-status', { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    const cb = document.getElementById('ceasefire-banner');
+    const warDot = document.querySelector('.status-dot.red');
+    const warVal = document.querySelector('.status-value.red');
+    if (data.ceasefire) {
+      cb.textContent = `🕊️ CEASEFIRE SIGNAL DETECTED — "${data.ceasefireHeadline}"`;
+      cb.style.display = 'block';
+      // Flip war status to green
+      document.querySelectorAll('.status-dot.red').forEach(d => { d.className = 'status-dot green'; });
+      document.querySelectorAll('#war-status-val').forEach(v => { v.textContent = 'CEASEFIRE'; v.className = 'status-value green'; });
+    } else {
+      cb.style.display = 'none';
+    }
+  } catch (e) { /* silent */ }
+}
+
+// ============================================================
+//  MARKET CARD UPDATER
+// ============================================================
 let prevBTC = null, prevSP = null, prevOil = null;
 
 function updateCard(id, priceEl, changeEl, price, change, symbol, prev, sparkId, upColor = '#3fb950') {
@@ -177,6 +221,7 @@ async function fetchBTC() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     updateCard('btc-card', 'btc-price', 'btc-change', data.price, data.change, '$', prevBTC, 'btc-spark');
+    checkPriceAlert('Bitcoin', 'BTC', data.price, data.change);
     prevBTC = data.price;
   } catch (e) {
     document.getElementById('btc-price').textContent = 'Error';
@@ -200,6 +245,7 @@ async function fetchSP500() {
     const data = await fetchMarket('^GSPC');
     updateCard('sp500-card', 'sp500-price', 'sp500-change', data.price, data.change, '$', prevSP, 'sp500-spark');
     sparkline('sp500-spark', data.history, data.change >= 0 ? '#3fb950' : '#f85149');
+    checkPriceAlert('S&P 500', 'SP500', data.price, data.change);
     prevSP = data.price;
   } catch (e) {
     document.getElementById('sp500-price').textContent = 'Error';
@@ -212,6 +258,7 @@ async function fetchOil() {
     const data = await fetchMarket('CL=F');
     updateCard('oil-card', 'oil-price', 'oil-change', data.price, data.change, '$', prevOil, 'oil-spark');
     sparkline('oil-spark', data.history, '#e3693a');
+    checkPriceAlert('WTI Oil', 'OIL', data.price, data.change);
     prevOil = data.price;
   } catch (e) {
     document.getElementById('oil-price').textContent = 'Error';
@@ -299,6 +346,7 @@ function animateCounter(id, target, duration = 1200) {
 async function refresh() {
   updateTimestamp();
   await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchNews(), fetchAndRenderTimeline()]);
+  checkWarStatus();
 }
 
 // ============================================================
