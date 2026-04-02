@@ -129,8 +129,8 @@ async function scanNewsForWarStatus() {
   } catch (e) { /* silent */ }
 }
 
-// Scan every 30 minutes
-setInterval(scanNewsForWarStatus, 30 * 60 * 1000);
+// Scan every 4 hours — 6 req/day
+setInterval(scanNewsForWarStatus, 4 * 60 * 60 * 1000);
 scanNewsForWarStatus();
 
 // ============================================================
@@ -445,10 +445,46 @@ app.get('/api/fear-greed', async (req, res) => {
   }
 });
 
-// /api/events — live key events from GNews
+const EVENTS_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours — shared by /api/news and /api/events
+
+// /api/news — news cards for dashboard (cached 4h — 6 req/day)
+let _newsCache = { data: [], fetchedAt: 0 };
+
+app.get('/api/news', async (req, res) => {
+  if (!GNEWS_KEY) return res.json([]);
+  if (_newsCache.data.length && Date.now() - _newsCache.fetchedAt < EVENTS_CACHE_TTL) {
+    return res.json(_newsCache.data);
+  }
+  try {
+    const q = encodeURIComponent('Iran Israel war missile attack 2026');
+    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=6&sortby=publishedAt&apikey=${GNEWS_KEY}`;
+    const data = await fetchJSON(url);
+    const articles = (data.articles || []).map(a => ({
+      title: a.title,
+      source: a.source?.name || 'News',
+      date: new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      url: a.url,
+    }));
+    _newsCache = { data: articles, fetchedAt: Date.now() };
+    res.json(articles);
+  } catch (e) {
+    if (_newsCache.data.length) return res.json(_newsCache.data);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// /api/events — live key events from GNews (cached 4h — 6 req/day)
 const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
+let _eventsCache = { data: [], fetchedAt: 0 };
+
 app.get('/api/events', async (req, res) => {
   if (!GNEWS_KEY) return res.status(500).json({ error: 'No GNEWS_API_KEY set' });
+
+  // Serve cache if fresh
+  if (_eventsCache.data.length && Date.now() - _eventsCache.fetchedAt < EVENTS_CACHE_TTL) {
+    return res.json(_eventsCache.data);
+  }
+
   try {
     const q = encodeURIComponent('Iran Israel war 2026');
     const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
@@ -462,8 +498,11 @@ app.get('/api/events', async (req, res) => {
       else if (title.includes('israel') && !title.includes('iran') && !title.includes('us ') && !title.includes('united states')) actor = 'israel';
       return { date, actor, event: a.title, detail: a.source?.name || '', url: a.url };
     });
+    _eventsCache = { data: events, fetchedAt: Date.now() };
     res.json(events);
   } catch (e) {
+    // On error, return stale cache if available
+    if (_eventsCache.data.length) return res.json(_eventsCache.data);
     res.status(500).json({ error: e.message });
   }
 });

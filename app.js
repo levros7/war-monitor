@@ -278,25 +278,13 @@ const FALLBACK_NEWS = [
   { title: 'Israel Air Force on highest readiness since Oct 7', source: 'Haaretz', date: 'Mar 28, 2026', url: '#' },
 ];
 
+// fetchNews goes through /api/news (server-side cache, 4h TTL) — never calls GNews directly
 async function fetchNews() {
   const grid = document.getElementById('news-grid');
-
-  if (GNEWS_API_KEY === 'YOUR_GNEWS_API_KEY') {
-    renderNewsCards(FALLBACK_NEWS, grid, true);
-    return;
-  }
-
   try {
-    const q = encodeURIComponent('Iran Israel war missile attack');
-    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=6&apikey=${GNEWS_API_KEY}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    const data = await res.json();
-    const articles = (data.articles || []).map(a => ({
-      title: a.title,
-      source: a.source?.name || 'News',
-      date: new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      url: a.url,
-    }));
+    const res = await fetch('/api/news', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const articles = await res.json();
     renderNewsCards(articles.length ? articles : FALLBACK_NEWS, grid, !articles.length);
   } catch (e) {
     renderNewsCards(FALLBACK_NEWS, grid, true);
