@@ -216,6 +216,70 @@ function initMap() {
   launchWave();
   setInterval(launchWave, 12000);
 
+  // ── LIVE MISSILE ALERTS ──────────────────────────────────
+  let lastAlertTs = Date.now() - 3600000; // look back 1h on first load
+
+  function flashLaunchAlert(title, originName, targetName) {
+    const banner = document.getElementById('live-launch-banner');
+    if (!banner) return;
+    const type = title.toLowerCase().includes('drone') ? '🛸' :
+                 title.toLowerCase().includes('ballistic') ? '🚀' :
+                 title.toLowerCase().includes('rocket') ? '💥' : '🚀';
+    banner.innerHTML = `${type} <b>LIVE LAUNCH DETECTED</b> &mdash; ${title}` +
+      (originName ? ` &bull; Origin: ${originName}` : '') +
+      (targetName ? ` &bull; Target: ${targetName}` : '');
+    banner.style.display = 'block';
+    setTimeout(() => { banner.style.display = 'none'; }, 15000);
+  }
+
+  function animateLiveEvent(event) {
+    if (!event.origin || !event.target) return;
+
+    const from = { lat: event.origin.coords[0], lng: event.origin.coords[1] };
+    const to   = { lat: event.target.coords[0], lng: event.target.coords[1] };
+    const color = event.origin.color || '#f85149';
+    const path  = arcPath(from, to);
+
+    // Draw trajectory line
+    const line = L.polyline(path, {
+      color, weight: 1.5, opacity: 0.5, dashArray: '4 5',
+    }).addTo(map);
+    setTimeout(() => map.removeLayer(line), 30000);
+
+    // Origin pulse
+    const originMarker = L.marker([from.lat, from.lng], { icon: pulsingIcon(color) }).addTo(map);
+    originMarker.bindPopup(`<b style="color:${color}">🚀 LAUNCH DETECTED</b><br>${event.title}<br><i>${event.source}</i>`);
+    setTimeout(() => map.removeLayer(originMarker), 20000);
+
+    // Animate missile
+    animateMissile(map, path, color, 5000, () => {
+      const m = L.circleMarker([to.lat, to.lng], {
+        radius: 12, color, fillColor: color, fillOpacity: 0.4, weight: 2,
+      }).addTo(map);
+      setTimeout(() => map.removeLayer(m), 3000);
+    });
+
+    flashLaunchAlert(event.title, event.origin?.name, event.target?.name);
+  }
+
+  async function fetchLiveMissileAlerts() {
+    try {
+      const res = await fetch(`/api/missile-alerts?since=${lastAlertTs}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return;
+      const events = await res.json();
+      if (events.length) {
+        lastAlertTs = Math.max(...events.map(e => e.timestamp));
+        events.forEach(e => animateLiveEvent(e));
+      }
+    } catch (_) {}
+  }
+
+  // Poll for live missile events every 30 seconds
+  fetchLiveMissileAlerts();
+  setInterval(fetchLiveMissileAlerts, 30000);
+
   return map;
 }
 

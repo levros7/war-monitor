@@ -1,5 +1,6 @@
 const express = require('express');
 const https = require('https');
+const http  = require('http');
 const path = require('path');
 
 const app = express();
@@ -7,6 +8,42 @@ const PORT = process.env.PORT || 3000;
 
 // Serve static files
 app.use(express.static(path.join(__dirname)));
+
+// Helper: fetch raw text (for RSS)
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? https : http;
+    const req = lib.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml,text/xml,*/*' },
+      timeout: 8000,
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+  });
+}
+
+// Parse RSS XML items → [{title, link, pubDate}]
+function parseRss(xml) {
+  const items = [];
+  const re = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    const block = m[1];
+    const get = (tag) => {
+      const r = new RegExp(`<${tag}[^>]*>(?:<![\\[CDATA\\[)?(.*?)(?:\\]\\]>)?</${tag}>`, 's');
+      return (r.exec(block) || [])[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
+    };
+    const title = get('title');
+    const link  = get('link') || get('guid');
+    const pub   = get('pubDate');
+    if (title) items.push({ title, link, pubDate: pub });
+  }
+  return items;
+}
 
 // Helper: fetch URL server-side
 function fetchJSON(url) {
@@ -275,6 +312,122 @@ app.post('/api/telegram/webhook', async (req, res) => {
 });
 
 if (TG_TOKEN && TG_CHAT_ID) scheduleDailyBriefing();
+
+// ============================================================
+//  LIVE MISSILE TRACKER
+//  Scans RSS feeds every 2 min for launch/strike events
+// ============================================================
+const RSS_FEEDS = [
+  'https://feeds.reuters.com/reuters/topNews',
+  'https://www.timesofisrael.com/feed/',
+  'https://rss.cnn.com/rss/edition_world.rss',
+  'https://www.aljazeera.com/xml/rss/all.xml',
+];
+
+const MISSILE_KEYWORDS = [
+  'missile', 'ballistic', 'rocket launched', 'rockets fired', 'drone attack',
+  'drone strike', 'barrage', 'salvo', 'airstrike', 'air strike', 'bombardment',
+  'fired at', 'launched at', 'attack on', 'struck', 'bombed', 'explosion',
+];
+
+const ORIGIN_MAP = [
+  { keywords: ['iran','irgc','revolutionary guard','tehran'],          coords:[35.69,51.39], name:'Iran',          color:'#bc8cff' },
+  { keywords: ['hezbollah','lebanon','beirut'],                        coords:[33.89,35.50], name:'Hezbollah/Lebanon', color:'#bc8cff' },
+  { keywords: ['houthi','yemen','sanaa','hodeidah'],                   coords:[15.35,44.21], name:'Yemen (Houthi)', color:'#bc8cff' },
+  { keywords: ['hamas','gaza','islamic jihad'],                        coords:[31.50,34.47], name:'Gaza',          color:'#bc8cff' },
+  { keywords: ['israel','idf','israeli air force','israeli military'], coords:[32.08,34.78], name:'Israel',        color:'#3fb950' },
+  { keywords: ['united states','u.s. military','pentagon','navy','american forces'], coords:[31.8,29.5], name:'US Forces', color:'#58a6ff' },
+];
+
+const TARGET_MAP = [
+  { keywords: ['israel','tel aviv','haifa','jerusalem','ben gurion','ashkelon','ashdod'], coords:[32.08,34.78], name:'Israel' },
+  { keywords: ['iran','tehran','natanz','isfahan','parchin','fordow'],                   coords:[35.69,51.39], name:'Iran' },
+  { keywords: ['bahrain','manama'],                                                       coords:[26.22,50.59], name:'Bahrain' },
+  { keywords: ['qatar','doha','al udeid'],                                                coords:[25.28,51.54], name:'Qatar' },
+  { keywords: ['uae','dubai','abu dhabi','emirates'],                                     coords:[25.20,55.27], name:'UAE' },
+  { keywords: ['kuwait'],                                                                  coords:[29.37,47.98], name:'Kuwait' },
+  { keywords: ['saudi','riyadh'],                                                          coords:[24.69,46.72], name:'Saudi Arabia' },
+  { keywords: ['iraq','baghdad'],                                                          coords:[33.33,44.44], name:'Iraq' },
+  { keywords: ['syria','damascus'],                                                        coords:[33.51,36.29], name:'Syria' },
+  { keywords: ['lebanon','beirut'],                                                        coords:[33.89,35.50], name:'Lebanon' },
+];
+
+const missileEvents = [];  // ring buffer — last 30 events
+const _seenMissileTitles = new Set();
+
+function extractLocation(title, map) {
+  const t = title.toLowerCase();
+  return map.find(entry => entry.keywords.some(k => t.includes(k))) || null;
+}
+
+function missileType(title) {
+  const t = title.toLowerCase();
+  if (t.includes('ballistic'))      return 'ballistic';
+  if (t.includes('cruise'))         return 'cruise';
+  if (t.includes('drone'))          return 'drone';
+  if (t.includes('rocket'))         return 'rocket';
+  if (t.includes('airstrike') || t.includes('air strike')) return 'airstrike';
+  return 'missile';
+}
+
+async function scanRssForMissiles() {
+  for (const feed of RSS_FEEDS) {
+    try {
+      const xml   = await fetchText(feed);
+      const items = parseRss(xml);
+
+      for (const item of items) {
+        const t = item.title.toLowerCase();
+        const isMissile = MISSILE_KEYWORDS.some(k => t.includes(k));
+        if (!isMissile) continue;
+        if (_seenMissileTitles.has(item.title)) continue;
+
+        _seenMissileTitles.add(item.title);
+
+        const origin = extractLocation(item.title, ORIGIN_MAP);
+        const target = extractLocation(item.title, TARGET_MAP);
+
+        const event = {
+          id:         Date.now() + Math.random(),
+          timestamp:  Date.now(),
+          title:      item.title,
+          url:        item.link,
+          source:     feed.includes('reuters') ? 'Reuters' :
+                      feed.includes('timesofisrael') ? 'Times of Israel' :
+                      feed.includes('cnn') ? 'CNN' : 'Al Jazeera',
+          type:       missileType(item.title),
+          origin:     origin ? { name: origin.name, coords: origin.coords, color: origin.color } : null,
+          target:     target ? { name: target.name, coords: target.coords } : null,
+        };
+
+        missileEvents.unshift(event);
+        if (missileEvents.length > 30) missileEvents.pop();
+
+        console.log(`[MissileTracker] NEW EVENT: ${item.title}`);
+
+        // Immediate Telegram alert
+        const tgText = `🚀 <b>MISSILE ALERT</b>\n\n` +
+          `${item.title}\n\n` +
+          (origin ? `📍 Origin: ${origin.name}\n` : '') +
+          (target ? `🎯 Target: ${target.name}\n` : '') +
+          `⚔️ Type: ${event.type.toUpperCase()}\n` +
+          `<i>${event.source}</i>\n` +
+          (item.link ? `<a href="${item.link}">Full Story</a>` : '');
+        sendTelegram(tgText);
+      }
+    } catch (e) { /* silent per feed */ }
+  }
+}
+
+// Scan every 2 minutes
+setInterval(scanRssForMissiles, 2 * 60 * 1000);
+scanRssForMissiles(); // immediate on boot
+
+app.get('/api/missile-alerts', (req, res) => {
+  const since = parseInt(req.query.since || '0');
+  const events = since ? missileEvents.filter(e => e.timestamp > since) : missileEvents.slice(0, 10);
+  res.json(events);
+});
 
 // /api/fear-greed — Crypto Fear & Greed Index (alternative.me, no key needed)
 app.get('/api/fear-greed', async (req, res) => {

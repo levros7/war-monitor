@@ -315,6 +315,58 @@ function renderNewsCards(articles, grid, isFallback) {
 }
 
 // ============================================================
+//  LIVE MISSILE ALERTS FEED
+// ============================================================
+function missileIcon(type) {
+  if (type === 'drone' || type === 'drone attack') return '🛸';
+  if (type === 'ballistic') return '🚀';
+  if (type === 'airstrike') return '✈️';
+  if (type === 'rocket') return '💥';
+  return '🚀';
+}
+
+function timeSince(ts) {
+  const secs = Math.floor((Date.now() - ts) / 1000);
+  if (secs < 60)   return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  return `${Math.floor(secs / 3600)}h ago`;
+}
+
+async function fetchMissileAlerts() {
+  try {
+    const res = await fetch('/api/missile-alerts', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return;
+    const events = await res.json();
+    renderMissileAlerts(events);
+  } catch (_) {}
+}
+
+function renderMissileAlerts(events) {
+  const feed = document.getElementById('missile-alerts-feed');
+  if (!feed) return;
+  if (!events || events.length === 0) {
+    feed.innerHTML = '<div class="missile-feed-empty">No missile events detected in last scan — monitoring RSS feeds...</div>';
+    return;
+  }
+  feed.innerHTML = events.map((e, i) => `
+    <div class="missile-alert-item ${i === 0 ? 'new' : ''}">
+      <div class="missile-alert-icon">${missileIcon(e.type)}</div>
+      <div class="missile-alert-body">
+        <div class="missile-alert-title">
+          ${e.url ? `<a href="${e.url}" target="_blank" rel="noopener">${e.title}</a>` : e.title}
+        </div>
+        <div class="missile-alert-meta">
+          ${e.origin ? `<span class="missile-alert-origin">📍 ${e.origin.name}</span>` : ''}
+          ${e.target ? `<span class="missile-alert-target">🎯 ${e.target.name}</span>` : ''}
+          <span>${e.source}</span>
+          <span class="missile-alert-time">${timeSince(e.timestamp)}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
 //  FEAR & GREED INDEX
 // ============================================================
 function fgColor(value) {
@@ -416,7 +468,7 @@ function animateCounter(id, target, duration = 1200) {
 // ============================================================
 async function refresh() {
   updateTimestamp();
-  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchFearGreed(), fetchNews(), fetchAndRenderTimeline()]);
+  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchFearGreed(), fetchMissileAlerts(), fetchNews(), fetchAndRenderTimeline()]);
   checkWarStatus();
 }
 
