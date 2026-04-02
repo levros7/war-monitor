@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>US-Israel / Iran War Monitor</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <div class="app">
@@ -95,6 +96,20 @@
 
     </div>
 
+    <!-- MISSILE MAP -->
+    <section class="section-title">LIVE MISSILE TRAJECTORY MAP
+      <span class="news-note">Simulated based on known launch vectors · 2026 Iran War</span>
+    </section>
+    <div class="map-wrap">
+      <div id="conflict-map"></div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f85149"></span> Iranian Missile / Drone</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#3fb950"></span> Intercepted</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#58a6ff"></span> US Navy Asset</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#bc8cff"></span> Launch Site (IRGC)</div>
+      </div>
+    </div>
+
     <!-- MISSILE COUNTER -->
     <section class="section-title">STRIKE TRACKER</section>
     <div class="strike-grid">
@@ -143,6 +158,8 @@
     </footer>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
+  <script src="map.js"></script>
 </body>
 </html>
