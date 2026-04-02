@@ -305,54 +305,19 @@ async function refresh() {
 //  INIT
 // ============================================================
 // ============================================================
-//  THREAT LEVEL TOGGLE
+//  WAR DAY COUNTER
 // ============================================================
-const THREAT_STYLES = {
-  'seg-low':      { bg: 'rgba(63,185,80,0.25)',  border: '#3fb950', color: '#3fb950', shadow: '0 0 14px rgba(63,185,80,0.6)' },
-  'seg-guarded':  { bg: 'rgba(88,166,255,0.25)', border: '#58a6ff', color: '#58a6ff', shadow: '0 0 14px rgba(88,166,255,0.6)' },
-  'seg-elevated': { bg: 'rgba(210,153,34,0.3)',  border: '#d29922', color: '#d29922', shadow: '0 0 14px rgba(210,153,34,0.6)' },
-  'seg-high':     { bg: 'rgba(227,105,58,0.25)', border: '#e3693a', color: '#e3693a', shadow: '0 0 14px rgba(227,105,58,0.6)' },
-  'seg-critical': { bg: 'rgba(248,81,73,0.25)',  border: '#f85149', color: '#f85149', shadow: '0 0 14px rgba(248,81,73,0.8)' },
-};
-
-function initThreatLevel() {
-  const segs = document.querySelectorAll('.tl-seg');
-
-  function setActive(active) {
-    segs.forEach(s => {
-      const key = [...s.classList].find(c => c.startsWith('seg-'));
-      s.style.background = '';
-      s.style.borderColor = '';
-      s.style.color = '#8b949e';
-      s.style.fontWeight = '';
-      s.style.boxShadow = '';
-      s.style.transform = '';
-    });
-    const key = [...active.classList].find(c => c.startsWith('seg-'));
-    const st = THREAT_STYLES[key];
-    if (st) {
-      active.style.background  = st.bg;
-      active.style.borderColor = st.border;
-      active.style.color       = st.color;
-      active.style.fontWeight  = '700';
-      active.style.boxShadow   = st.shadow;
-      active.style.transform   = 'translateY(-2px)';
-    }
-  }
-
-  segs.forEach(seg => {
-    seg.style.cursor = 'pointer';
-    seg.addEventListener('click', () => setActive(seg));
-  });
-
-  // Set initial active
-  const initial = document.querySelector('.tl-seg.active-seg') || segs[2];
-  setActive(initial);
+function updateWarDay() {
+  const start = new Date('2026-02-28T00:00:00Z');
+  const now = new Date();
+  const day = Math.floor((now - start) / (1000 * 60 * 60 * 24)) + 1;
+  const el = document.getElementById('war-day');
+  if (el) { el.textContent = `DAY ${day}`; el.className = 'status-value red'; }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchAndRenderTimeline();
-  initThreatLevel();
+  updateWarDay();
 
   // Animate strike counters on load
   animateCounter('total-launched', 500);
