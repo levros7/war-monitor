@@ -328,9 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initThreatLevel();
 
   // Animate strike counters on load
-  animateCounter('total-launched', 247);
-  animateCounter('total-intercepted', 198, 1400);
-  animateCounter('total-incidents', 14, 900);
+  animateCounter('total-launched', 3080);
+  animateCounter('total-intercepted', 2772, 1400);
+  animateCounter('total-incidents', 4, 900);
   animateCounter('us-assets', 2, 600);
 
   // First data fetch
