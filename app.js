@@ -84,17 +84,32 @@ const TIMELINE_EVENTS = [
 // ============================================================
 //  RENDER TIMELINE
 // ============================================================
-function renderTimeline() {
+function renderTimeline(events) {
   const container = document.getElementById('timeline');
-  const items = [...TIMELINE_EVENTS].reverse(); // newest first
+  const items = [...events].reverse(); // newest first
   container.innerHTML = items.map(e => `
     <div class="tl-item ${e.actor}">
       <div class="tl-date">${e.date}</div>
       <span class="tl-actor ${e.actor}">${e.actor.toUpperCase()}</span>
-      <div class="tl-event">${e.event}</div>
+      <div class="tl-event">${e.url ? `<a href="${e.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted">${e.event}</a>` : e.event}</div>
       ${e.detail ? `<div class="tl-detail">${e.detail}</div>` : ''}
     </div>
   `).join('');
+}
+
+async function fetchAndRenderTimeline() {
+  try {
+    const res = await fetch('/api/events', { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const events = await res.json();
+    if (events.length) {
+      renderTimeline(events);
+      return;
+    }
+  } catch (e) {
+    console.warn('Live events fetch failed, using static data:', e.message);
+  }
+  renderTimeline(TIMELINE_EVENTS);
 }
 
 // ============================================================
@@ -283,7 +298,7 @@ function animateCounter(id, target, duration = 1200) {
 // ============================================================
 async function refresh() {
   updateTimestamp();
-  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchNews()]);
+  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchNews(), fetchAndRenderTimeline()]);
 }
 
 // ============================================================
@@ -336,7 +351,7 @@ function initThreatLevel() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderTimeline();
+  fetchAndRenderTimeline();
   initThreatLevel();
 
   // Animate strike counters on load

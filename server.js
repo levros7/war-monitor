@@ -60,4 +60,27 @@ app.get('/api/btc', async (req, res) => {
   }
 });
 
+// /api/events — live key events from GNews
+const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
+app.get('/api/events', async (req, res) => {
+  if (!GNEWS_KEY) return res.status(500).json({ error: 'No GNEWS_API_KEY set' });
+  try {
+    const q = encodeURIComponent('Iran Israel war 2026');
+    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
+    const data = await fetchJSON(url);
+    const events = (data.articles || []).map(a => {
+      const d = new Date(a.publishedAt);
+      const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const title = a.title.toLowerCase();
+      let actor = 'us';
+      if (title.includes('iran') && !title.includes('israel') && !title.includes('us ') && !title.includes('united states')) actor = 'iran';
+      else if (title.includes('israel') && !title.includes('iran') && !title.includes('us ') && !title.includes('united states')) actor = 'israel';
+      return { date, actor, event: a.title, detail: a.source?.name || '', url: a.url };
+    });
+    res.json(events);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`War Monitor running on port ${PORT}`));
