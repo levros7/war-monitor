@@ -158,6 +158,8 @@ h1 {
 .active-seg.seg-high     { background: rgba(227,105,58,0.25); color: var(--orange); border-color: var(--orange); font-weight: 700; }
 .active-seg.seg-critical { background: rgba(248,81,73,0.25); color: var(--red); border-color: var(--red); font-weight: 700; }
 
+.tl-seg:hover { opacity: 0.85; transform: scale(1.04); transition: transform 0.15s; }
+
 /* ===== SECTION TITLE ===== */
 .section-title {
   display: flex;

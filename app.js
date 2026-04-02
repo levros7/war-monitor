@@ -281,8 +281,23 @@ async function refresh() {
 // ============================================================
 //  INIT
 // ============================================================
+// ============================================================
+//  THREAT LEVEL TOGGLE
+// ============================================================
+function initThreatLevel() {
+  const segs = document.querySelectorAll('.tl-seg');
+  segs.forEach(seg => {
+    seg.style.cursor = 'pointer';
+    seg.addEventListener('click', () => {
+      segs.forEach(s => s.classList.remove('active-seg'));
+      seg.classList.add('active-seg');
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderTimeline();
+  initThreatLevel();
 
   // Animate strike counters on load
   animateCounter('total-launched', 247);
