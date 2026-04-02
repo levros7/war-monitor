@@ -6,7 +6,7 @@
 //    News:  GNews API (free tier — add your key below)
 // ============================================================
 
-const GNEWS_API_KEY = 1a32d5631729d69af83a627f5d660a79; // → https://gnews.io (free 100 req/day)
+const GNEWS_API_KEY = '1a32d5631729d69af83a627f5d660a79';
 const REFRESH_MS = 60_000; // refresh every 60 seconds
 
 // ============================================================
