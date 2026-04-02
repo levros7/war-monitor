@@ -48,13 +48,13 @@ app.get('/api/market', async (req, res) => {
   }
 });
 
-// /api/btc — Bitcoin price via CoinGecko
+// /api/btc — Bitcoin price via Binance (no rate limits)
 app.get('/api/btc', async (req, res) => {
   try {
-    const data = await fetchJSON(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
-    );
-    res.json({ price: data.bitcoin.usd, change: data.bitcoin.usd_24h_change });
+    const data = await fetchJSON('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+    const price = parseFloat(data.lastPrice);
+    const change = parseFloat(data.priceChangePercent);
+    res.json({ price, change });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -85,7 +85,7 @@ function sendTelegram(text) {
 // Fetch all market data for briefing
 async function getMarketSnapshot() {
   const [btcRaw, spRaw, oilRaw] = await Promise.allSettled([
-    fetchJSON('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'),
+    fetchJSON('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
     fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=2d`),
     fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/CL%3DF?interval=1d&range=2d`),
   ]);
@@ -95,8 +95,8 @@ async function getMarketSnapshot() {
 
   let btcLine = '₿ Bitcoin: N/A';
   if (btcRaw.status === 'fulfilled') {
-    const p = btcRaw.value.bitcoin.usd;
-    const c = btcRaw.value.bitcoin.usd_24h_change;
+    const p = parseFloat(btcRaw.value.lastPrice);
+    const c = parseFloat(btcRaw.value.priceChangePercent);
     btcLine = `₿ <b>Bitcoin:</b> $${fmt(p)}  ${sign(c)} ${Math.abs(c).toFixed(2)}%`;
   }
 
