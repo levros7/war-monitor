@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US-Israel / Iran War Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- HEADER -->
+    <header>
+      <div class="header-left">
+        <span class="pulse-dot"></span>
+        <div>
+          <h1>WAR MONITOR</h1>
+          <span class="subtitle">US · ISRAEL vs IRAN</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="live-badge">LIVE</span>
+        <span class="update-time">Updated: <span id="last-update">—</span></span>
+      </div>
+    </header>
+
+    <!-- THREAT LEVEL -->
+    <div class="threat-banner">
+      <span class="threat-label">THREAT LEVEL</span>
+      <div class="threat-bar">
+        <div class="tl-seg seg-low">LOW</div>
+        <div class="tl-seg seg-guarded">GUARDED</div>
+        <div class="tl-seg seg-elevated active-seg">ELEVATED</div>
+        <div class="tl-seg seg-high">HIGH</div>
+        <div class="tl-seg seg-critical">CRITICAL</div>
+      </div>
+    </div>
+
+    <!-- MARKETS GRID -->
+    <section class="section-title">MARKET IMPACT</section>
+    <div class="markets-grid">
+
+      <div class="card market-card" id="btc-card">
+        <div class="card-icon">₿</div>
+        <div class="card-body">
+          <div class="card-label">BITCOIN</div>
+          <div class="card-price" id="btc-price">—</div>
+          <div class="card-change" id="btc-change">—</div>
+        </div>
+        <div class="card-sparkline" id="btc-spark"></div>
+      </div>
+
+      <div class="card market-card" id="sp500-card">
+        <div class="card-icon">📊</div>
+        <div class="card-body">
+          <div class="card-label">S&amp;P 500</div>
+          <div class="card-price" id="sp500-price">—</div>
+          <div class="card-change" id="sp500-change">—</div>
+        </div>
+        <div class="card-sparkline" id="sp500-spark"></div>
+      </div>
+
+      <div class="card market-card" id="oil-card">
+        <div class="card-icon">🛢</div>
+        <div class="card-body">
+          <div class="card-label">WTI CRUDE OIL</div>
+          <div class="card-price" id="oil-price">—</div>
+          <div class="card-change" id="oil-change">—</div>
+        </div>
+        <div class="card-sparkline" id="oil-spark"></div>
+      </div>
+
+    </div>
+
+    <!-- MISSILE COUNTER -->
+    <section class="section-title">STRIKE TRACKER</section>
+    <div class="strike-grid">
+
+      <div class="card strike-card">
+        <div class="strike-big" id="total-launched">247</div>
+        <div class="strike-label">Missiles &amp; Drones Launched</div>
+        <div class="strike-sub">Iran vs. Israel · Apr 2024 – present</div>
+      </div>
+
+      <div class="card strike-card">
+        <div class="strike-big green" id="total-intercepted">198</div>
+        <div class="strike-label">Intercepted / Neutralized</div>
+        <div class="strike-sub">~80% interception rate (Iron Dome + US assets)</div>
+      </div>
+
+      <div class="card strike-card">
+        <div class="strike-big yellow" id="total-incidents">14</div>
+        <div class="strike-label">Major Incidents</div>
+        <div class="strike-sub">Direct exchange events</div>
+      </div>
+
+      <div class="card strike-card">
+        <div class="strike-big red" id="us-assets">2</div>
+        <div class="strike-label">US Carrier Groups Deployed</div>
+        <div class="strike-sub">USS Gerald R. Ford · USS Dwight D. Eisenhower</div>
+      </div>
+
+    </div>
+
+    <!-- KEY EVENTS TIMELINE -->
+    <section class="section-title">KEY EVENTS</section>
+    <div class="timeline" id="timeline"></div>
+
+    <!-- NEWS FEED -->
+    <section class="section-title">LATEST INTEL
+      <span class="news-note">Powered by GNews API — add your key in app.js</span>
+    </section>
+    <div class="news-grid" id="news-grid">
+      <div class="news-placeholder">Loading latest intelligence...</div>
+    </div>
+
+    <footer>
+      <span>Data: CoinGecko · Yahoo Finance · GNews · Manual Tracking</span>
+      <span>Refreshes every 60s</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
