@@ -29,13 +29,15 @@ function fetchText(url) {
 // Parse RSS XML items → [{title, link, pubDate}]
 function parseRss(xml) {
   const items = [];
-  const re = /<item>([\s\S]*?)<\/item>/g;
+  const itemRe = /<item[^>]*>([\s\S]*?)<\/item>/gi;
   let m;
-  while ((m = re.exec(xml)) !== null) {
+  while ((m = itemRe.exec(xml)) !== null) {
     const block = m[1];
     const get = (tag) => {
-      const r = new RegExp(`<${tag}[^>]*>(?:<![\\[CDATA\\[)?(.*?)(?:\\]\\]>)?</${tag}>`, 's');
-      return (r.exec(block) || [])[1]?.replace(/<!\[CDATA\[|\]\]>/g, '').trim() || '';
+      // Handles both plain text and <![CDATA[...]]> content
+      const re = new RegExp('<' + tag + '[^>]*>\\s*(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?\\s*<\\/' + tag + '>', 'i');
+      const hit = re.exec(block);
+      return hit ? hit[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
     };
     const title = get('title');
     const link  = get('link') || get('guid');
@@ -318,10 +320,9 @@ if (TG_TOKEN && TG_CHAT_ID) scheduleDailyBriefing();
 //  Scans RSS feeds every 2 min for launch/strike events
 // ============================================================
 const RSS_FEEDS = [
-  'https://feeds.reuters.com/reuters/topNews',
-  'https://www.timesofisrael.com/feed/',
-  'https://rss.cnn.com/rss/edition_world.rss',
-  'https://www.aljazeera.com/xml/rss/all.xml',
+  { name: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/' },
+  { name: 'BBC World',       url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { name: 'Jerusalem Post',  url: 'https://www.jpost.com/rss/rssfeedsheadlines.aspx' },
 ];
 
 const MISSILE_KEYWORDS = [
@@ -370,11 +371,20 @@ function missileType(title) {
   return 'missile';
 }
 
+let _lastScanResult = { scannedAt: null, itemsChecked: 0, newEvents: 0, errors: [] };
+
 async function scanRssForMissiles() {
+  const scanStart = Date.now();
+  let totalChecked = 0;
+  let newFound = 0;
+  const errors = [];
+
   for (const feed of RSS_FEEDS) {
     try {
-      const xml   = await fetchText(feed);
+      const xml   = await fetchText(feed.url);
       const items = parseRss(xml);
+      totalChecked += items.length;
+      console.log(`[MissileTracker] ${feed.name}: parsed ${items.length} items`);
 
       for (const item of items) {
         const t = item.title.toLowerCase();
@@ -383,45 +393,66 @@ async function scanRssForMissiles() {
         if (_seenMissileTitles.has(item.title)) continue;
 
         _seenMissileTitles.add(item.title);
+        newFound++;
 
         const origin = extractLocation(item.title, ORIGIN_MAP);
         const target = extractLocation(item.title, TARGET_MAP);
 
         const event = {
-          id:         Date.now() + Math.random(),
-          timestamp:  Date.now(),
-          title:      item.title,
-          url:        item.link,
-          source:     feed.includes('reuters') ? 'Reuters' :
-                      feed.includes('timesofisrael') ? 'Times of Israel' :
-                      feed.includes('cnn') ? 'CNN' : 'Al Jazeera',
-          type:       missileType(item.title),
-          origin:     origin ? { name: origin.name, coords: origin.coords, color: origin.color } : null,
-          target:     target ? { name: target.name, coords: target.coords } : null,
+          id:        Date.now() + Math.random(),
+          timestamp: Date.now(),
+          title:     item.title,
+          url:       item.link,
+          source:    feed.name,
+          type:      missileType(item.title),
+          origin:    origin ? { name: origin.name, coords: origin.coords, color: origin.color } : null,
+          target:    target ? { name: target.name, coords: target.coords } : null,
         };
 
         missileEvents.unshift(event);
         if (missileEvents.length > 30) missileEvents.pop();
 
-        console.log(`[MissileTracker] NEW EVENT: ${item.title}`);
+        console.log(`[MissileTracker] NEW EVENT (${feed.name}): ${item.title}`);
 
-        // Immediate Telegram alert
         const tgText = `🚀 <b>MISSILE ALERT</b>\n\n` +
           `${item.title}\n\n` +
           (origin ? `📍 Origin: ${origin.name}\n` : '') +
           (target ? `🎯 Target: ${target.name}\n` : '') +
           `⚔️ Type: ${event.type.toUpperCase()}\n` +
-          `<i>${event.source}</i>\n` +
+          `<i>${feed.name}</i>\n` +
           (item.link ? `<a href="${item.link}">Full Story</a>` : '');
         sendTelegram(tgText);
       }
-    } catch (e) { /* silent per feed */ }
+    } catch (e) {
+      errors.push(`${feed.name}: ${e.message}`);
+      console.error(`[MissileTracker] Feed error (${feed.name}): ${e.message}`);
+    }
   }
+
+  _lastScanResult = {
+    scannedAt:    new Date().toISOString(),
+    itemsChecked: totalChecked,
+    newEvents:    newFound,
+    totalStored:  missileEvents.length,
+    errors,
+    durationMs:   Date.now() - scanStart,
+  };
+  console.log(`[MissileTracker] Scan done — ${totalChecked} items, ${newFound} new events`);
 }
 
 // Scan every 2 minutes
 setInterval(scanRssForMissiles, 2 * 60 * 1000);
 scanRssForMissiles(); // immediate on boot
+
+app.get('/api/missile-debug', (req, res) => {
+  res.json({
+    lastScan:    _lastScanResult,
+    totalEvents: missileEvents.length,
+    recentEvents: missileEvents.slice(0, 5).map(e => ({ title: e.title, source: e.source, ts: new Date(e.timestamp).toISOString() })),
+    feeds: RSS_FEEDS.map(f => f.name),
+    seenTitles: _seenMissileTitles.size,
+  });
+});
 
 app.get('/api/missile-alerts', (req, res) => {
   const since = parseInt(req.query.since || '0');
