@@ -320,12 +320,25 @@ function timeSince(ts) {
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
+const BASE_LAUNCHED     = 500;  // historical conflict total
+const BASE_INTERCEPTED  = 450;
+
 async function fetchMissileAlerts() {
   try {
     const res = await fetch('/api/missile-alerts', { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return;
     const events = await res.json();
     renderMissileAlerts(events);
+
+    // Update live counters: base + live detected events
+    if (events.length) {
+      const launched    = BASE_LAUNCHED    + events.length;
+      const intercepted = Math.round(launched * 0.9);
+      const elL = document.getElementById('total-launched');
+      const elI = document.getElementById('total-intercepted');
+      if (elL) elL.textContent = launched;
+      if (elI) elI.textContent = intercepted;
+    }
   } catch (_) {}
 }
 
@@ -478,9 +491,9 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchAndRenderTimeline();
   updateWarDay();
 
-  // Animate strike counters on load
-  animateCounter('total-launched', 500);
-  animateCounter('total-intercepted', 450, 1400);
+  // Animate strike counters on load (live data added by fetchMissileAlerts)
+  animateCounter('total-launched', BASE_LAUNCHED);
+  animateCounter('total-intercepted', BASE_INTERCEPTED, 1400);
   animateCounter('total-incidents', 1, 900);
   animateCounter('us-assets', 2, 600);
 

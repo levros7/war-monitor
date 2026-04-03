@@ -217,7 +217,7 @@ function initMap() {
   setInterval(launchWave, 12000);
 
   // ── LIVE MISSILE ALERTS ──────────────────────────────────
-  let lastAlertTs = Date.now() - 3600000; // look back 1h on first load
+  let lastAlertTs = 0; // show all stored events on first load
 
   function flashLaunchAlert(title, originName, targetName) {
     const banner = document.getElementById('live-launch-banner');
