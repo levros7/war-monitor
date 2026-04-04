@@ -40,7 +40,11 @@ const HISTORICAL_STRIKES = [
   { date: 'Mar 2', from: [31.32, 48.67], to: [29.37, 47.98], color: '#bc8cff',
     actor: 'IRGC', label: 'Iran strikes US bases in Kuwait — 6 killed', type: 'missile' },
   { date: 'Mar 2', from: [33.89, 35.50], to: [32.82, 35.00], color: '#e3693a',
-    actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel', type: 'rocket' },
+    actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel (Haifa)', type: 'rocket' },
+  { date: 'Mar 2', from: [33.27, 35.57], to: [32.96, 35.50], color: '#e3693a',
+    actor: 'Hezbollah', label: 'Hezbollah rockets — Kiryat Shmona & Safed', type: 'rocket' },
+  { date: 'Apr 2', from: [33.89, 35.50], to: [32.08, 34.78], color: '#e3693a',
+    actor: 'Hezbollah', label: 'Hezbollah long-range rocket salvo — Tel Aviv area', type: 'rocket' },
 
   // ── Mar 3, 2026 ──
   { date: 'Mar 3', from: [25.50, 57.80], to: [26.50, 56.30], color: '#58a6ff',
@@ -127,7 +131,8 @@ function arcPath(from, to, steps = 60) {
   const dlat = to[0] - from[0];
   const dlng = to[1] - from[1];
   const dist  = Math.sqrt(dlat * dlat + dlng * dlng);
-  const bow   = Math.min(dist * 0.15, 5.0);
+  // Minimum bow of 1.8° so short-range rockets (Lebanon→Israel, ~1°) are still visibly curved
+  const bow   = Math.min(Math.max(dist * 0.18, 1.8), 5.5);
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     pts.push([
@@ -136,6 +141,11 @@ function arcPath(from, to, steps = 60) {
     ]);
   }
   return pts;
+}
+
+// Returns arc distance (degrees) between two points
+function arcDist(from, to) {
+  return Math.sqrt(Math.pow(to[0]-from[0],2) + Math.pow(to[1]-from[1],2));
 }
 
 function svgDot(color, size = 9, pulse = false) {
@@ -257,7 +267,11 @@ function initMap() {
     const path  = arcPath(strike.from, strike.to);
     const color = ACTOR_COLOR[strike.actor] || strike.color;
     const intercepted = strike.type !== 'airstrike' && Math.random() < 0.88;
-    const duration = 4000 + Math.random() * 2000;
+    // Short-range strikes (Hezbollah, Gaza) get slower animation so they're visible
+    const dist = arcDist(strike.from, strike.to);
+    const duration = dist < 3 ? 3000 + Math.random() * 1000   // short range: 3–4s
+                   : dist < 10 ? 4000 + Math.random() * 2000  // medium: 4–6s
+                   : 5000 + Math.random() * 3000;              // long range: 5–8s
 
     if (intercepted) {
       const cutoff  = Math.floor(path.length * (0.55 + Math.random() * 0.25));
