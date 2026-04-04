@@ -15,8 +15,8 @@ const HISTORICAL_STRIKES = [
     actor: 'IDF', label: 'IDF strikes Natanz nuclear enrichment complex', type: 'airstrike' },
   { date: 'Feb 28', from: [31.21, 35.01], to: [32.63, 51.68], color: '#3fb950',
     actor: 'IDF', label: 'IDF strikes Isfahan missile base', type: 'airstrike' },
-  { date: 'Feb 28', from: [-7.31, 72.42], to: [35.69, 51.39], color: '#58a6ff',
-    actor: 'USN', label: 'US B-2 bombers (Diego Garcia, Indian Ocean) strike Tehran', type: 'airstrike' },
+  { date: 'Feb 28', from: [21.48, 39.19], to: [35.69, 51.39], color: '#58a6ff',
+    actor: 'USN', label: 'US Tomahawk cruise missiles (Red Sea) strike Tehran', type: 'missile' },
 
   // ── Feb 28, 2026 — Operation True Promise IV (Iran → Israel+Gulf) ──
   { date: 'Feb 28', from: [35.52, 51.77], to: [32.08, 34.78], color: '#bc8cff',
@@ -43,7 +43,7 @@ const HISTORICAL_STRIKES = [
     actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel', type: 'rocket' },
 
   // ── Mar 3, 2026 ──
-  { date: 'Mar 3', from: [33.5, 33.0], to: [26.80, 56.25], color: '#58a6ff',
+  { date: 'Mar 3', from: [25.50, 57.80], to: [26.50, 56.30], color: '#58a6ff',
     actor: 'USN', label: 'US Navy sinks IRIS Fateh submarine — Strait of Hormuz', type: 'strike' },
 
   // ── Mar 18, 2026 ──
