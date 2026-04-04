@@ -320,24 +320,33 @@ function timeSince(ts) {
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
-const BASE_LAUNCHED     = 500;  // historical conflict total
-const BASE_INTERCEPTED  = 450;
+const BASE_LAUNCHED = 500; // confirmed historical conflict total (Feb 28–Apr 2)
 
 async function fetchMissileAlerts() {
   try {
-    const res = await fetch('/api/missile-alerts', { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return;
-    const events = await res.json();
-    renderMissileAlerts(events);
+    const [alertsRes, debugRes] = await Promise.allSettled([
+      fetch('/api/missile-alerts',  { signal: AbortSignal.timeout(5000) }),
+      fetch('/api/missile-debug',   { signal: AbortSignal.timeout(5000) }),
+    ]);
 
-    // Update live counters: base + live detected events
-    if (events.length) {
-      const launched    = BASE_LAUNCHED    + events.length;
+    // Render alert feed
+    if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
+      const events = await alertsRes.value.json();
+      renderMissileAlerts(events);
+    }
+
+    // Update strike tracker counters from live total
+    if (debugRes.status === 'fulfilled' && debugRes.value.ok) {
+      const debug     = await debugRes.value.json();
+      const liveExtra = debug.totalEvents || 0;
+      const launched  = BASE_LAUNCHED + liveExtra;
       const intercepted = Math.round(launched * 0.9);
-      const elL = document.getElementById('total-launched');
-      const elI = document.getElementById('total-intercepted');
-      if (elL) elL.textContent = launched;
-      if (elI) elI.textContent = intercepted;
+      animateCounter('total-launched',    launched);
+      animateCounter('total-intercepted', intercepted, 1400);
+      // Update intercept rate label
+      const rateEl = document.getElementById('intercept-rate');
+      if (rateEl) rateEl.textContent =
+        `~${Math.round((intercepted / launched) * 100)}% interception rate · ${liveExtra} live detections`;
     }
   } catch (_) {}
 }
@@ -491,9 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchAndRenderTimeline();
   updateWarDay();
 
-  // Animate strike counters on load (live data added by fetchMissileAlerts)
-  animateCounter('total-launched', BASE_LAUNCHED);
-  animateCounter('total-intercepted', BASE_INTERCEPTED, 1400);
+  // launched/intercepted animated by fetchMissileAlerts (avoids race condition)
   animateCounter('total-incidents', 1, 900);
   animateCounter('us-assets', 2, 600);
 
