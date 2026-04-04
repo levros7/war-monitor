@@ -113,11 +113,11 @@ const LOCATIONS = {
 
 // ── COLORS BY ACTOR ───────────────────────────────────────────
 const ACTOR_COLOR = {
-  Iran: '#bc8cff', IRGC: '#bc8cff',
-  Israel: '#3fb950', IDF: '#3fb950', USAF: '#3fb950',
-  US: '#58a6ff', USN: '#58a6ff',
-  Houthi: '#f85149',
-  Hezbollah: '#e3693a',
+  Iran: '#f85149', IRGC: '#f85149',   // red — threat actor
+  Israel: '#3fb950', IDF: '#3fb950',  // green — Israeli strikes
+  US: '#58a6ff', USN: '#58a6ff',      // blue — US forces
+  Houthi: '#ff6b35',                  // orange-red — Houthi
+  Hezbollah: '#e3693a',               // orange — Hezbollah
   Gulf: '#d29922',
 };
 
@@ -183,8 +183,8 @@ function initMap() {
   }).addTo(map);
 
   // ── LOCATION MARKERS ────────────────────────────────────────
-  const markerColor = { Iran: '#bc8cff', Israel: '#3fb950', US: '#58a6ff',
-                        Houthi: '#f85149', Hezbollah: '#e3693a', Gulf: '#d29922' };
+  const markerColor = { Iran: '#f85149', Israel: '#3fb950', US: '#58a6ff',
+                        Houthi: '#ff6b35', Hezbollah: '#e3693a', Gulf: '#d29922' };
 
   Object.values(LOCATIONS).flat().forEach(loc => {
     const color = markerColor[loc.actor] || '#8b949e';
@@ -232,11 +232,11 @@ function initMap() {
       min-width:150px;`;
     div.innerHTML = `
       <div style="color:#8b949e;margin-bottom:6px;font-size:10px">STRIKE ACTORS</div>
-      <div>⚡ <span style="color:#bc8cff">■</span> Iran / IRGC</div>
-      <div>⚡ <span style="color:#3fb950">■</span> Israel / IDF</div>
-      <div>⚡ <span style="color:#58a6ff">■</span> US Forces</div>
-      <div>⚡ <span style="color:#f85149">■</span> Yemen / Houthi</div>
-      <div>⚡ <span style="color:#e3693a">■</span> Hezbollah</div>
+      <div>🚀 <span style="color:#f85149">■</span> Iran / IRGC</div>
+      <div>✈️ <span style="color:#3fb950">■</span> Israel / IDF</div>
+      <div>✈️ <span style="color:#58a6ff">■</span> US Forces</div>
+      <div>🚀 <span style="color:#ff6b35">■</span> Yemen / Houthi</div>
+      <div>💥 <span style="color:#e3693a">■</span> Hezbollah</div>
       <hr style="border-color:#21262d;margin:6px 0">
       <div style="color:#8b949e;font-size:10px">Click any arc for details</div>
       <div id="map-live-status" style="color:#3fb950;margin-top:4px;font-size:10px">● RSS scanning...</div>
