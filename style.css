@@ -316,7 +316,8 @@ h1 {
 }
 
 @media (max-width: 700px) {
-  .markets-grid { grid-template-columns: 1fr; }
+  .markets-grid { grid-template-columns: repeat(2, 1fr); }
+  .card-price { font-size: 22px; }
 }
 
 .market-card {
@@ -624,6 +625,8 @@ h1 {
   padding: 3px 0;
   cursor: pointer;
   transition: opacity .15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .mlc-row:hover { opacity: .8; }
@@ -912,41 +915,120 @@ footer {
 
 /* ===== MOBILE ===== */
 @media (max-width: 600px) {
-  .app { padding: 10px; }
+  .app { padding: 8px; }
 
+  /* Header */
   header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
     gap: 8px;
-    padding: 12px 14px;
   }
 
-  .header-right { align-self: flex-end; }
+  .header-left { gap: 10px; }
+  .pulse-dot { width: 10px; height: 10px; }
+  h1 { font-size: 16px; letter-spacing: 2px; }
+  .subtitle { font-size: 9px; letter-spacing: 1px; }
+  .header-right { gap: 8px; font-size: 10px; }
+  .update-time { display: none; }
 
-  h1 { font-size: 18px; }
-
+  /* Status bar — 2×3 grid */
   .status-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
+    padding: 8px;
   }
 
   .status-item {
-    padding: 8px 10px;
-    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    padding: 7px 10px;
+    gap: 6px;
   }
+
+  .status-label {
+    font-size: 8px;
+    letter-spacing: 0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-value { font-size: 9px; }
+
+  /* Hide secondary note text in section titles */
+  .news-note { display: none; }
+
+  /* Markets — 2 columns on mobile */
+  .markets-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .card { padding: 12px; }
+  .card-icon { font-size: 18px; }
+  .card-price { font-size: 20px; }
+  .card-change { font-size: 11px; }
+
+  /* Fear & Greed — compact */
+  .fg-wrap { flex-direction: column; }
+  .fg-gauge-area { min-width: unset; }
+  .fg-zone-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Map — taller so layer control fits */
+  .map-wrap { height: 400px; }
+  #conflict-map { height: 400px; }
+
+  /* Layer control — compact on mobile */
+  .map-layer-control {
+    padding: 8px 10px;
+    min-width: 130px;
+    font-size: 10px;
+  }
+
+  .mlc-title { font-size: 8px; margin-bottom: 6px; }
+  .mlc-label { font-size: 9.5px; }
+  .mlc-live { font-size: 8.5px; }
+  .mlc-row { padding: 2px 0; }
+
+  /* Missile feed */
+  .missile-alert-item { gap: 8px; padding: 8px 12px; }
+  .missile-alert-title { font-size: 11px; }
+
+  /* Strike grid — 2×2 */
+  .strike-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .strike-card { padding: 14px 10px; }
+  .strike-big { font-size: 34px; }
+  .strike-label { font-size: 10px; }
+  .strike-sub { font-size: 9px; }
+
+  /* News */
+  .news-grid { grid-template-columns: 1fr; }
+
+  /* Section titles */
+  .section-title { font-size: 9px; letter-spacing: 2px; padding: 10px 4px 5px; }
+
+  /* Footer */
+  footer { flex-direction: column; gap: 4px; text-align: center; font-size: 9px; }
+}
+
+/* Very small phones (< 380px) */
+@media (max-width: 380px) {
+  h1 { font-size: 14px; letter-spacing: 1px; }
+
+  .status-bar { grid-template-columns: 1fr 1fr; }
 
   .markets-grid { grid-template-columns: 1fr; }
 
-  .map-wrap { height: 260px; }
+  .card-price { font-size: 18px; }
 
-  #conflict-map { height: 260px; }
+  .map-layer-control { min-width: 115px; }
+  .mlc-label { font-size: 8.5px; }
 
-  .strike-grid { grid-template-columns: repeat(2, 1fr); }
-
-  .strike-big { font-size: 36px; }
-
-  .news-grid { grid-template-columns: 1fr; }
-
-  .section-title { font-size: 10px; }
-
-  footer { flex-direction: column; gap: 4px; text-align: center; }
+  .strike-big { font-size: 28px; }
 }
