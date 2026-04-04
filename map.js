@@ -1,309 +1,243 @@
 // ============================================================
-//  map.js — Real Conflict Event Map
-//  Shows confirmed historical strikes + live RSS-detected events
-//  NO simulation — every arc corresponds to a real reported event
+//  map.js — OSINT Conflict Map
+//  Visual style inspired by professional threat-tracking dashboards:
+//  - Comet trail animation (bright head + fading trail)
+//  - Impact cluster dots that accumulate at target locations
+//  - No static arc lines — only live missile animations
 // ============================================================
 
-// ── CONFIRMED HISTORICAL STRIKES ─────────────────────────────
-// Source: public reporting (Reuters, ToI, BBC, AP, DoD statements)
 const HISTORICAL_STRIKES = [
+  // Iran → Israel
+  { date: 'Feb 28', from: [35.52, 51.77], to: [32.08, 34.78], actor: 'IRGC', label: 'IRGC — ~170 ballistic missiles fired at Israel', type: 'ballistic' },
+  { date: 'Feb 28', from: [35.52, 51.77], to: [32.82, 35.00], actor: 'IRGC', label: 'IRGC ballistic missiles — Haifa', type: 'ballistic' },
+  { date: 'Feb 28', from: [34.32, 47.07], to: [32.08, 34.78], actor: 'IRGC', label: 'IRGC mobile launchers — Tel Aviv barrage', type: 'ballistic' },
+  { date: 'Mar 1',  from: [35.52, 51.77], to: [31.72, 34.99], actor: 'IRGC', label: 'Iranian missiles breach Iron Dome — Beit Shemesh struck', type: 'ballistic' },
+  { date: 'Apr 3',  from: [35.52, 51.77], to: [32.90, 35.30], actor: 'IRGC', label: 'Iranian attack — cluster munitions, northern Israel', type: 'missile' },
+  { date: 'Feb 28', from: [38.08, 46.30], to: [32.08, 34.78], actor: 'IRGC', label: 'Tabriz IRGC base — northern salvo at Israel', type: 'ballistic' },
 
-  // ── Feb 28, 2026 — Operation Epic Fury (US+Israel → Iran) ──
-  { date: 'Feb 28', from: [31.21, 35.01], to: [35.69, 51.39], color: '#3fb950',
-    actor: 'IDF', label: 'IDF/USAF strike Tehran command centers', type: 'airstrike' },
-  { date: 'Feb 28', from: [31.21, 35.01], to: [33.72, 51.93], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes Natanz nuclear enrichment complex', type: 'airstrike' },
-  { date: 'Feb 28', from: [31.21, 35.01], to: [32.63, 51.68], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes Isfahan missile base', type: 'airstrike' },
-  { date: 'Feb 28', from: [21.48, 39.19], to: [35.69, 51.39], color: '#58a6ff',
-    actor: 'USN', label: 'US Tomahawk cruise missiles (Red Sea) strike Tehran', type: 'missile' },
+  // Iran → Gulf states
+  { date: 'Feb 28', from: [31.32, 48.67], to: [26.22, 50.59], actor: 'IRGC', label: 'Iran strikes US 5th Fleet HQ — Manama, Bahrain', type: 'missile' },
+  { date: 'Feb 28', from: [31.32, 48.67], to: [25.20, 55.27], actor: 'IRGC', label: 'Iran hits Dubai & Abu Dhabi airports (UAE)', type: 'missile' },
+  { date: 'Mar 2',  from: [31.32, 48.67], to: [25.28, 51.54], actor: 'IRGC', label: 'Iran strikes Qatar LNG facilities — Doha', type: 'missile' },
+  { date: 'Mar 2',  from: [31.32, 48.67], to: [29.37, 47.98], actor: 'IRGC', label: 'Iran strikes US bases in Kuwait — 6 killed', type: 'missile' },
+  { date: 'Mar 18', from: [31.32, 48.67], to: [25.28, 51.54], actor: 'IRGC', label: 'Iran retaliates — Qatar LNG production facility struck', type: 'missile' },
 
-  // ── Feb 28, 2026 — Operation True Promise IV (Iran → Israel+Gulf) ──
-  { date: 'Feb 28', from: [35.52, 51.77], to: [32.08, 34.78], color: '#bc8cff',
-    actor: 'IRGC', label: 'IRGC — ~170 ballistic missiles fired at Israel', type: 'ballistic' },
-  { date: 'Feb 28', from: [35.52, 51.77], to: [32.82, 35.00], color: '#bc8cff',
-    actor: 'IRGC', label: 'IRGC ballistic missiles — Haifa', type: 'ballistic' },
-  { date: 'Feb 28', from: [31.32, 48.67], to: [26.22, 50.59], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iran strikes US 5th Fleet HQ — Manama, Bahrain', type: 'missile' },
-  { date: 'Feb 28', from: [31.32, 48.67], to: [25.20, 55.27], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iran hits Dubai & Abu Dhabi airports (UAE)', type: 'missile' },
-  { date: 'Feb 28', from: [15.35, 44.21], to: [32.08, 34.78], color: '#f85149',
-    actor: 'Houthi', label: 'Houthi ballistic salvo — Tel Aviv', type: 'ballistic' },
+  // Houthi → Israel
+  { date: 'Feb 28', from: [15.35, 44.21], to: [32.08, 34.78], actor: 'Houthi', label: 'Houthi ballistic salvo — Tel Aviv', type: 'ballistic' },
+  { date: 'Mar 5',  from: [14.80, 42.95], to: [32.08, 34.78], actor: 'Houthi', label: 'Houthi coastal battery — Tel Aviv barrage', type: 'ballistic' },
+  { date: 'Mar 12', from: [15.35, 44.21], to: [29.54, 34.95], actor: 'Houthi', label: 'Houthi missiles — Eilat / Red Sea', type: 'ballistic' },
 
-  // ── Mar 1, 2026 ──
-  { date: 'Mar 1', from: [35.52, 51.77], to: [31.72, 34.99], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iranian missiles breach Iron Dome — Beit Shemesh struck', type: 'ballistic' },
+  // Hezbollah → Israel
+  { date: 'Mar 2',  from: [33.89, 35.50], to: [32.82, 35.00], actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel (Haifa)', type: 'rocket' },
+  { date: 'Mar 2',  from: [33.27, 35.57], to: [32.96, 35.50], actor: 'Hezbollah', label: 'Hezbollah rockets — Kiryat Shmona & Safed', type: 'rocket' },
+  { date: 'Apr 2',  from: [33.89, 35.50], to: [32.08, 34.78], actor: 'Hezbollah', label: 'Hezbollah long-range rocket salvo — Tel Aviv area', type: 'rocket' },
 
-  // ── Mar 2, 2026 ──
-  { date: 'Mar 2', from: [31.32, 48.67], to: [25.28, 51.54], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iran strikes Qatar LNG facilities — Doha', type: 'missile' },
-  { date: 'Mar 2', from: [31.32, 48.67], to: [29.37, 47.98], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iran strikes US bases in Kuwait — 6 killed', type: 'missile' },
-  { date: 'Mar 2', from: [33.89, 35.50], to: [32.82, 35.00], color: '#e3693a',
-    actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel (Haifa)', type: 'rocket' },
-  { date: 'Mar 2', from: [33.27, 35.57], to: [32.96, 35.50], color: '#e3693a',
-    actor: 'Hezbollah', label: 'Hezbollah rockets — Kiryat Shmona & Safed', type: 'rocket' },
-  { date: 'Apr 2', from: [33.89, 35.50], to: [32.08, 34.78], color: '#e3693a',
-    actor: 'Hezbollah', label: 'Hezbollah long-range rocket salvo — Tel Aviv area', type: 'rocket' },
+  // IDF → Iran
+  { date: 'Feb 28', from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF', label: 'IDF/USAF strike Tehran command centers', type: 'airstrike' },
+  { date: 'Feb 28', from: [31.21, 35.01], to: [33.72, 51.93], actor: 'IDF', label: 'IDF strikes Natanz nuclear enrichment complex', type: 'airstrike' },
+  { date: 'Feb 28', from: [31.21, 35.01], to: [32.63, 51.68], actor: 'IDF', label: 'IDF strikes Isfahan missile base', type: 'airstrike' },
+  { date: 'Mar 18', from: [31.21, 35.01], to: [27.13, 52.62], actor: 'IDF', label: 'IDF strikes South Pars gas field', type: 'airstrike' },
+  { date: 'Mar 21', from: [31.21, 35.01], to: [33.72, 51.93], actor: 'IDF', label: 'IDF + US strike Natanz with bunker-busters', type: 'airstrike' },
+  { date: 'Mar 26', from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF', label: 'IDF kills IRGC Navy Chief Tangsiri — Tehran', type: 'airstrike' },
+  { date: 'Mar 26', from: [31.21, 35.01], to: [34.10, 49.78], actor: 'IDF', label: 'IDF strikes Arak heavy water reactor', type: 'airstrike' },
+  { date: 'Apr 1',  from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF', label: 'IDF strikes Tehran — energy infrastructure', type: 'airstrike' },
+  { date: 'Apr 3',  from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF', label: 'IAF hits petrochemicals, air defense & missile sites — Tehran', type: 'airstrike' },
+  { date: 'Mar 26', from: [31.84, 34.82], to: [31.90, 54.37], actor: 'IDF', label: 'IDF strikes Yazd yellowcake plant', type: 'airstrike' },
 
-  // ── Mar 3, 2026 ──
-  { date: 'Mar 3', from: [25.50, 57.80], to: [26.50, 56.30], color: '#58a6ff',
-    actor: 'USN', label: 'US Navy sinks IRIS Fateh submarine — Strait of Hormuz', type: 'strike' },
-
-  // ── Mar 18, 2026 ──
-  { date: 'Mar 18', from: [31.21, 35.01], to: [27.13, 52.62], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes South Pars gas field (Iran)', type: 'airstrike' },
-  { date: 'Mar 18', from: [31.21, 35.01], to: [35.16, 51.42], color: '#3fb950',
-    actor: 'IDF', label: 'IDF kills Iranian Intelligence Minister Khatib — Tehran', type: 'airstrike' },
-  { date: 'Mar 18', from: [31.32, 48.67], to: [25.28, 51.54], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iran retaliates — Qatar LNG production facility struck', type: 'missile' },
-
-  // ── Mar 21, 2026 ──
-  { date: 'Mar 21', from: [31.21, 35.01], to: [33.72, 51.93], color: '#3fb950',
-    actor: 'IDF', label: 'IDF + US strike Natanz with bunker-busters', type: 'airstrike' },
-
-  // ── Mar 26, 2026 ──
-  { date: 'Mar 26', from: [31.21, 35.01], to: [35.69, 51.39], color: '#3fb950',
-    actor: 'IDF', label: 'IDF kills IRGC Navy Chief Tangsiri — Tehran', type: 'airstrike' },
-  { date: 'Mar 26', from: [31.21, 35.01], to: [34.10, 49.78], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes Arak heavy water reactor', type: 'airstrike' },
-  { date: 'Mar 26', from: [31.21, 35.01], to: [31.90, 54.37], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes Yazd yellowcake plant', type: 'airstrike' },
-
-  // ── Apr 1, 2026 ──
-  { date: 'Apr 1', from: [31.21, 35.01], to: [35.69, 51.39], color: '#3fb950',
-    actor: 'IDF', label: 'IDF strikes Tehran — energy infrastructure', type: 'airstrike' },
-
-  // ── Apr 3, 2026 ──
-  { date: 'Apr 3', from: [31.21, 35.01], to: [35.69, 51.39], color: '#3fb950',
-    actor: 'IDF', label: 'IAF hits Iranian petrochemicals, air defense & missile sites — Tehran', type: 'airstrike' },
-  { date: 'Apr 3', from: [35.52, 51.77], to: [32.90, 35.30], color: '#bc8cff',
-    actor: 'IRGC', label: 'Iranian attack on northern Israel — cluster munitions reported', type: 'missile' },
+  // US → Iran
+  { date: 'Feb 28', from: [21.48, 39.19], to: [35.69, 51.39], actor: 'USN', label: 'US Tomahawk cruise missiles (Red Sea) strike Tehran', type: 'missile' },
+  { date: 'Mar 21', from: [25.50, 57.80], to: [33.72, 51.93], actor: 'USN', label: 'US Navy — Natanz bunker-buster strike', type: 'airstrike' },
+  { date: 'Mar 3',  from: [25.50, 57.80], to: [26.50, 56.30], actor: 'USN', label: 'US Navy sinks IRIS Fateh submarine — Strait of Hormuz', type: 'strike' },
 ];
 
-// ── KEY LOCATIONS ─────────────────────────────────────────────
-const LOCATIONS = {
-  iran: [
-    { name: 'Parchin Complex',        lat: 35.52, lng: 51.77, type: 'launch', actor: 'Iran' },
-    { name: 'Isfahan Missile Base',   lat: 32.63, lng: 51.66, type: 'launch', actor: 'Iran' },
-    { name: 'Khuzestan Corridor',     lat: 31.32, lng: 48.67, type: 'launch', actor: 'Iran' },
-    { name: 'Tehran (HQ)',            lat: 35.69, lng: 51.39, type: 'target', actor: 'Iran' },
-    { name: 'Natanz Nuclear Site',    lat: 33.72, lng: 51.93, type: 'target', actor: 'Iran' },
-    { name: 'South Pars Gas Field',   lat: 27.13, lng: 52.62, type: 'target', actor: 'Iran' },
-    { name: 'Arak Reactor',           lat: 34.10, lng: 49.78, type: 'target', actor: 'Iran' },
-  ],
-  israel: [
-    { name: 'Nevatim Air Base',       lat: 31.21, lng: 35.01, type: 'launch', actor: 'Israel' },
-    { name: 'Tel Nof Air Base',       lat: 31.84, lng: 34.82, type: 'launch', actor: 'Israel' },
-    { name: 'Tel Aviv / Gush Dan',    lat: 32.08, lng: 34.78, type: 'target', actor: 'Israel' },
-    { name: 'Haifa',                  lat: 32.82, lng: 35.00, type: 'target', actor: 'Israel' },
-    { name: 'Beit Shemesh',          lat: 31.72, lng: 34.99, type: 'target', actor: 'Israel' },
-  ],
-  gulf: [
-    { name: 'Bahrain — US 5th Fleet', lat: 26.22, lng: 50.59, type: 'target', actor: 'Gulf' },
-    { name: 'Qatar — LNG Terminal',   lat: 25.28, lng: 51.54, type: 'target', actor: 'Gulf' },
-    { name: 'Kuwait — US Bases',      lat: 29.37, lng: 47.98, type: 'target', actor: 'Gulf' },
-  ],
-  proxies: [
-    { name: 'Houthi — Sanaa',         lat: 15.35, lng: 44.21, type: 'launch', actor: 'Houthi' },
-    { name: 'Hezbollah — Baalbek',    lat: 34.00, lng: 36.21, type: 'launch', actor: 'Hezbollah' },
-    { name: 'Hezbollah — S. Lebanon', lat: 33.27, lng: 35.57, type: 'launch', actor: 'Hezbollah' },
-  ],
-  us: [
-    { name: 'USS Gerald R. Ford',     lat: 33.5,  lng: 33.0,  type: 'carrier', actor: 'US' },
-    { name: 'USS Eisenhower',         lat: 31.8,  lng: 29.5,  type: 'carrier', actor: 'US' },
-  ],
-};
-
-// ── COLORS BY ACTOR ───────────────────────────────────────────
 const ACTOR_COLOR = {
-  Iran: '#f85149', IRGC: '#f85149',   // red — threat actor
-  Israel: '#3fb950', IDF: '#3fb950',  // green — Israeli strikes
-  US: '#58a6ff', USN: '#58a6ff',      // blue — US forces
-  Houthi: '#ff6b35',                  // orange-red — Houthi
-  Hezbollah: '#e3693a',               // orange — Hezbollah
-  Gulf: '#d29922',
+  Iran: '#f85149', IRGC: '#f85149',
+  Israel: '#3fb950', IDF: '#3fb950',
+  US: '#58a6ff', USN: '#58a6ff',
+  Houthi: '#ff6b35',
+  Hezbollah: '#e3693a',
 };
 
-// ── HELPERS ───────────────────────────────────────────────────
-function arcPath(from, to, steps = 60) {
-  const pts = [];
+// ── PATH HELPERS ──────────────────────────────────────────────
+function arcPath(from, to, steps = 80) {
+  const pts  = [];
   const dlat = to[0] - from[0];
   const dlng = to[1] - from[1];
-  const dist  = Math.sqrt(dlat * dlat + dlng * dlng);
-  // Minimum bow of 1.8° so short-range rockets (Lebanon→Israel, ~1°) are still visibly curved
-  const bow   = Math.min(Math.max(dist * 0.18, 1.8), 5.5);
+  const dist = Math.sqrt(dlat * dlat + dlng * dlng);
+  const bow  = Math.min(Math.max(dist * 0.18, 1.8), 5.5);
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    pts.push([
-      from[0] + dlat * t + Math.sin(Math.PI * t) * bow,
-      from[1] + dlng * t,
-    ]);
+    pts.push([from[0] + dlat * t + Math.sin(Math.PI * t) * bow, from[1] + dlng * t]);
   }
   return pts;
 }
 
-// Returns arc distance (degrees) between two points
 function arcDist(from, to) {
-  return Math.sqrt(Math.pow(to[0]-from[0],2) + Math.pow(to[1]-from[1],2));
+  return Math.sqrt(Math.pow(to[0] - from[0], 2) + Math.pow(to[1] - from[1], 2));
 }
 
-function svgDot(color, size = 9, pulse = false) {
-  const r = size, d = r * 2;
-  return L.divIcon({
-    className: '',
-    html: pulse
-      ? `<div style="width:${d}px;height:${d}px;border-radius:50%;background:${color};
-           box-shadow:0 0 10px ${color};animation:missile-pulse 1.4s ease-in-out infinite"></div>`
-      : `<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}">
-           <circle cx="${r}" cy="${r}" r="${r*0.55}" fill="${color}" opacity="0.95"/>
-           <circle cx="${r}" cy="${r}" r="${r*0.9}"  fill="${color}" opacity="0.18"/>
-         </svg>`,
-    iconSize:   [d, d],
-    iconAnchor: [r, r],
-  });
-}
-
-function animateMissile(map, path, color, duration, onComplete) {
+// ── COMET TRAIL ANIMATION ─────────────────────────────────────
+// Bright glowing head + fading trail dots — matches professional tracker style
+function animateComet(map, path, color, duration, onComplete) {
   if (path.length < 2) return;
+
+  const TRAIL = 10;   // trail length in steps
+  const trail = [];   // active trail markers
   let step = 0;
-  const marker = L.marker(path[0], { icon: svgDot(color, 8, true), zIndexOffset: 600 }).addTo(map);
+
   const iv = setInterval(() => {
-    if (++step >= path.length) {
+    if (step >= path.length) {
       clearInterval(iv);
-      map.removeLayer(marker);
+      trail.forEach(m => { try { map.removeLayer(m); } catch (_) {} });
       if (onComplete) onComplete();
-    } else {
-      marker.setLatLng(path[step]);
+      return;
     }
+
+    // Add new head marker
+    const isHead = true;
+    const m = L.circleMarker(path[step], {
+      radius: 5, color: 'white', fillColor: color,
+      fillOpacity: 1.0, opacity: 0.9, weight: 1,
+      className: 'comet-head',
+    }).addTo(map);
+    trail.push(m);
+
+    // Fade and shrink older trail markers
+    for (let i = 0; i < trail.length; i++) {
+      const age = trail.length - 1 - i;
+      if (age > TRAIL) {
+        try { map.removeLayer(trail[i]); } catch (_) {}
+      } else if (age > 0) {
+        const fade = 1 - age / TRAIL;
+        trail[i].setStyle({
+          radius: Math.max(1.5, 5 * fade),
+          fillOpacity: fade * 0.85,
+          opacity: fade * 0.5,
+          fillColor: color,
+          color: color,
+          weight: 0,
+        });
+      }
+    }
+
+    // Remove markers beyond trail length from array
+    while (trail.length > TRAIL + 2) {
+      trail.shift();
+    }
+
+    step++;
   }, duration / path.length);
+}
+
+// ── IMPACT FLASH ──────────────────────────────────────────────
+function impactFlash(map, latlng, color) {
+  // Expanding ring effect
+  const ring = L.circleMarker(latlng, {
+    radius: 8, color, fillColor: color, fillOpacity: 0.6, weight: 2,
+  }).addTo(map);
+
+  let r = 8, fade = 0.6;
+  const iv = setInterval(() => {
+    r += 3; fade -= 0.12;
+    if (fade <= 0) { clearInterval(iv); try { map.removeLayer(ring); } catch (_) {} return; }
+    ring.setStyle({ radius: r, fillOpacity: fade, opacity: fade * 0.8 });
+  }, 60);
+
+  // Leave a small persistent dot at impact site
+  const dot = L.circleMarker(latlng, {
+    radius: 3, color, fillColor: color, fillOpacity: 0.7, weight: 0,
+  }).addTo(map);
+  setTimeout(() => { try { map.removeLayer(dot); } catch (_) {} }, 25000);
 }
 
 // ── INIT MAP ──────────────────────────────────────────────────
 function initMap() {
   const map = L.map('conflict-map', {
-    center: [31.0, 44.0],
+    center: [31.5, 42.0],
     zoom: 4,
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: false,
   });
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // Dark minimal tile — very close to reference site style
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
     maxZoom: 19, subdomains: 'abcd',
   }).addTo(map);
 
-  // ── LOCATION MARKERS ────────────────────────────────────────
-  const markerColor = { Iran: '#f85149', Israel: '#3fb950', US: '#58a6ff',
-                        Houthi: '#ff6b35', Hezbollah: '#e3693a', Gulf: '#d29922' };
+  // Subtle country label layer on top
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, subdomains: 'abcd', opacity: 0.4,
+  }).addTo(map);
 
-  Object.values(LOCATIONS).flat().forEach(loc => {
-    const color = markerColor[loc.actor] || '#8b949e';
-    const size  = loc.type === 'carrier' ? 10 : loc.type === 'launch' ? 8 : 7;
-    const icon  = loc.type === 'carrier' ? '⚓' :
-                  loc.type === 'launch'  ? '⚡' : '🎯';
-    L.marker([loc.lat, loc.lng], { icon: svgDot(color, size) })
-      .addTo(map)
-      .bindPopup(`<b style="color:${color}">${icon} ${loc.name}</b><br>
-                  <span style="color:#8b949e">${loc.actor} · ${loc.type}</span>`);
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
-    if (loc.type === 'carrier') {
-      L.circle([loc.lat, loc.lng], {
-        radius: 280000, color, fillColor: color,
-        fillOpacity: 0.03, weight: 1, dashArray: '6 5',
-      }).addTo(map);
-    }
-  });
-
-  // ── HISTORICAL STRIKE ARCS (permanent, real events) ─────────
-  HISTORICAL_STRIKES.forEach(strike => {
-    const path  = arcPath(strike.from, strike.to);
-    const color = ACTOR_COLOR[strike.actor] || strike.color;
-
-    // Dashed arc line
-    L.polyline(path, {
-      color, weight: 1.2, opacity: 0.35, dashArray: '5 7',
-    }).addTo(map)
-      .bindPopup(`<b style="color:${color}">⚔️ ${strike.label}</b><br>
-                  <span style="color:#8b949e">📅 ${strike.date} 2026 · ${strike.type}</span>`);
-
-    // Small impact dot at target
-    const end = path[path.length - 1];
-    L.circleMarker(end, {
-      radius: 4, color, fillColor: color, fillOpacity: 0.5, weight: 1,
-    }).addTo(map);
-  });
-
-  // ── MAP LEGEND ───────────────────────────────────────────────
+  // ── LEGEND ───────────────────────────────────────────────────
   const legend = L.control({ position: 'bottomleft' });
   legend.onAdd = () => {
     const div = L.DomUtil.create('div');
-    div.style.cssText = `background:#0d1117;border:1px solid #21262d;border-radius:6px;
-      padding:8px 10px;font-family:'SF Mono',monospace;font-size:11px;color:#e6edf3;
-      min-width:150px;`;
+    div.style.cssText = `background:rgba(13,17,23,0.85);border:1px solid #21262d;
+      border-radius:6px;padding:8px 12px;font-family:'SF Mono',monospace;
+      font-size:11px;color:#e6edf3;line-height:1.8;`;
     div.innerHTML = `
-      <div style="color:#8b949e;margin-bottom:6px;font-size:10px">STRIKE ACTORS</div>
-      <div>🚀 <span style="color:#f85149">■</span> Iran / IRGC</div>
-      <div>✈️ <span style="color:#3fb950">■</span> Israel / IDF</div>
-      <div>✈️ <span style="color:#58a6ff">■</span> US Forces</div>
-      <div>🚀 <span style="color:#ff6b35">■</span> Yemen / Houthi</div>
-      <div>💥 <span style="color:#e3693a">■</span> Hezbollah</div>
-      <hr style="border-color:#21262d;margin:6px 0">
-      <div style="color:#8b949e;font-size:10px">Click any arc for details</div>
-      <div id="map-live-status" style="color:#3fb950;margin-top:4px;font-size:10px">● RSS scanning...</div>
+      <div style="color:#8b949e;font-size:10px;margin-bottom:4px;letter-spacing:.05em">ACTORS</div>
+      <div><span style="color:#f85149">●</span> Iran / IRGC</div>
+      <div><span style="color:#3fb950">●</span> Israel / IDF</div>
+      <div><span style="color:#58a6ff">●</span> US Forces</div>
+      <div><span style="color:#ff6b35">●</span> Houthi / Yemen</div>
+      <div><span style="color:#e3693a">●</span> Hezbollah</div>
+      <hr style="border-color:#21262d;margin:5px 0">
+      <div id="map-live-status" style="color:#3fb950;font-size:10px">● Scanning RSS...</div>
     `;
     return div;
   };
   legend.addTo(map);
 
-  // ── REPLAY CONFIRMED HISTORICAL STRIKES (continuous animation) ──
-  // Cycles through real events so the map always has movement.
-  // Each replay shows the missile traveling its real documented route.
+  // ── REPLAY CONFIRMED HISTORICAL STRIKES ──────────────────────
   let replayIdx = 0;
 
   function replayNextStrike() {
-    const strike = HISTORICAL_STRIKES[replayIdx % HISTORICAL_STRIKES.length];
+    const strike   = HISTORICAL_STRIKES[replayIdx % HISTORICAL_STRIKES.length];
     replayIdx++;
 
-    const path  = arcPath(strike.from, strike.to);
-    const color = ACTOR_COLOR[strike.actor] || strike.color;
-    const intercepted = strike.type !== 'airstrike' && Math.random() < 0.88;
-    // Short-range strikes (Hezbollah, Gaza) get slower animation so they're visible
-    const dist = arcDist(strike.from, strike.to);
-    const duration = dist < 3 ? 3000 + Math.random() * 1000   // short range: 3–4s
-                   : dist < 10 ? 4000 + Math.random() * 2000  // medium: 4–6s
-                   : 5000 + Math.random() * 3000;              // long range: 5–8s
+    const path     = arcPath(strike.from, strike.to);
+    const color    = ACTOR_COLOR[strike.actor] || '#f85149';
+    const dist     = arcDist(strike.from, strike.to);
+    const intercepted = strike.type !== 'airstrike' && strike.type !== 'strike' && Math.random() < 0.85;
+
+    // Speed: short range slower, long range faster
+    const duration = dist < 3  ? 2800 + Math.random() * 1000
+                   : dist < 10 ? 4000 + Math.random() * 2000
+                   :             5500 + Math.random() * 3000;
 
     if (intercepted) {
-      const cutoff  = Math.floor(path.length * (0.55 + Math.random() * 0.25));
+      const cutoff  = Math.floor(path.length * (0.5 + Math.random() * 0.3));
       const partial = path.slice(0, cutoff);
-      animateMissile(map, partial, color, duration * 0.7, () => {
+      animateComet(map, partial, color, duration * 0.7, () => {
+        // Green intercept flash
         const m = L.circleMarker(partial[partial.length - 1], {
-          radius: 6, color: '#3fb950', fillColor: '#3fb950', fillOpacity: 0.7, weight: 1,
+          radius: 6, color: '#3fb950', fillColor: '#3fb950', fillOpacity: 0.8, weight: 0,
         }).addTo(map);
-        setTimeout(() => map.removeLayer(m), 1200);
+        setTimeout(() => { try { map.removeLayer(m); } catch (_) {} }, 800);
       });
     } else {
-      animateMissile(map, path, color, duration, () => {
-        const m = L.circleMarker(strike.to, {
-          radius: 10, color, fillColor: color, fillOpacity: 0.5, weight: 2,
-        }).addTo(map);
-        setTimeout(() => map.removeLayer(m), 2500);
+      animateComet(map, path, color, duration, () => {
+        impactFlash(map, strike.to, color);
       });
     }
 
-    // Schedule next replay: stagger so 2–3 missiles are visible at once
-    setTimeout(replayNextStrike, 2200 + Math.random() * 1800);
+    // Next missile: stagger 3 streams for constant activity
+    setTimeout(replayNextStrike, 1800 + Math.random() * 2000);
   }
 
-  // Start replay immediately, then stagger 3 simultaneous streams
+  // 3 staggered streams — always 2-3 missiles visible simultaneously
   replayNextStrike();
-  setTimeout(replayNextStrike, 800);
-  setTimeout(replayNextStrike, 1600);
+  setTimeout(replayNextStrike, 700);
+  setTimeout(replayNextStrike, 1400);
 
   // ── LIVE RSS-DETECTED EVENTS ──────────────────────────────────
   let lastAlertTs = 0;
 
-  function flashLaunchAlert(title, originName, targetName) {
+  function flashLaunchBanner(title, originName, targetName) {
     const banner = document.getElementById('live-launch-banner');
     if (!banner) return;
     const icon = title.toLowerCase().includes('drone')    ? '🛸' :
@@ -313,48 +247,25 @@ function initMap() {
       (originName ? ` · <b>${originName}</b>` : '') +
       (targetName ? ` ➜ <b>${targetName}</b>` : '');
     banner.style.display = 'block';
-    setTimeout(() => { banner.style.display = 'none'; }, 18000);
+    setTimeout(() => { banner.style.display = 'none'; }, 20000);
   }
 
   function animateLiveEvent(event) {
     let from, to, color;
-
     if (event.origin && event.target) {
       const oc = event.origin.coords, tc = event.target.coords;
-      if (oc[0] === tc[0] && oc[1] === tc[1]) return; // same location, skip
-      from  = oc;
-      to    = tc;
+      if (oc[0] === tc[0] && oc[1] === tc[1]) return;
+      from = oc; to = tc;
       color = event.origin.color || '#f85149';
     } else if (event.origin) {
-      from  = event.origin.coords;
-      to    = [32.08, 34.78]; // default: Tel Aviv
+      from = event.origin.coords;
+      to   = [32.08, 34.78];
       color = event.origin.color || '#f85149';
-    } else {
-      return;
-    }
+    } else return;
 
     const path = arcPath(from, to);
-
-    // Bright live arc (stays 60s)
-    const line = L.polyline(path, { color, weight: 2.5, opacity: 0.8, dashArray: '4 4' })
-      .addTo(map)
-      .bindPopup(
-        `<b style="color:${color}">🔴 LIVE — ${event.title}</b><br>` +
-        `<span style="color:#8b949e">${event.source} · Just now</span>` +
-        (event.url ? `<br><a href="${event.url}" target="_blank" style="color:${color}">Read →</a>` : '')
-      );
-    line.openPopup();
-    setTimeout(() => { try { map.removeLayer(line); } catch (_) {} }, 60000);
-
-    // Animate missile along arc
-    animateMissile(map, path, color, 7000, () => {
-      const impact = L.circleMarker(to, {
-        radius: 15, color, fillColor: color, fillOpacity: 0.4, weight: 2,
-      }).addTo(map);
-      setTimeout(() => map.removeLayer(impact), 5000);
-    });
-
-    flashLaunchAlert(event.title, event.origin?.name, event.target?.name);
+    animateComet(map, path, color, 7000, () => impactFlash(map, to, color));
+    flashLaunchBanner(event.title, event.origin?.name, event.target?.name);
   }
 
   async function fetchLiveMissileAlerts() {
@@ -365,19 +276,17 @@ function initMap() {
       if (!res.ok) return;
       const events = await res.json();
       const statusEl = document.getElementById('map-live-status');
-
       if (events.length) {
         lastAlertTs = Math.max(...events.map(e => e.timestamp));
         events.forEach(e => animateLiveEvent(e));
-        if (statusEl) statusEl.textContent = `● ${events.length} live event(s) plotted`;
+        if (statusEl) statusEl.textContent = `● ${events.length} live event(s) detected`;
       } else {
-        const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        if (statusEl) statusEl.textContent = `● RSS checked ${now}`;
+        const t = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        if (statusEl) statusEl.textContent = `● RSS checked ${t}`;
       }
     } catch (_) {}
   }
 
-  // First load — get all stored events
   fetchLiveMissileAlerts();
   setInterval(fetchLiveMissileAlerts, 30000);
 
