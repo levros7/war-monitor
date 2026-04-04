@@ -413,15 +413,8 @@ async function scanRssForMissiles() {
         if (missileEvents.length > 30) missileEvents.pop();
 
         console.log(`[MissileTracker] NEW EVENT (${feed.name}): ${item.title}`);
-
-        const tgText = `🚀 <b>MISSILE ALERT</b>\n\n` +
-          `${item.title}\n\n` +
-          (origin ? `📍 Origin: ${origin.name}\n` : '') +
-          (target ? `🎯 Target: ${target.name}\n` : '') +
-          `⚔️ Type: ${event.type.toUpperCase()}\n` +
-          `<i>${feed.name}</i>\n` +
-          (item.link ? `<a href="${item.link}">Full Story</a>` : '');
-        sendTelegram(tgText);
+        // Telegram alerts handled by Python agent system (war_missile_tracker_agent.py)
+        // to avoid duplicate messages
       }
     } catch (e) {
       errors.push(`${feed.name}: ${e.message}`);
