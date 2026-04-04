@@ -224,7 +224,7 @@ function initMap() {
     maxZoom: 19, subdomains: 'abcd', opacity: 0.4,
   }).addTo(map);
 
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
   createLayerControl().addTo(map);
 
   // ── REPLAY CONFIRMED HISTORICAL STRIKES ──────────────────────

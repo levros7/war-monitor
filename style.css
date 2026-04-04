@@ -980,11 +980,13 @@ footer {
   .map-wrap { height: 400px; }
   #conflict-map { height: 400px; }
 
-  /* Layer control — compact on mobile */
+  /* Layer control — compact on mobile, never taller than map */
   .map-layer-control {
     padding: 8px 10px;
     min-width: 130px;
     font-size: 10px;
+    max-height: 360px;
+    overflow-y: auto;
   }
 
   .mlc-title { font-size: 8px; margin-bottom: 6px; }
