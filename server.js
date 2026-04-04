@@ -336,7 +336,7 @@ const ORIGIN_MAP = [
   { keywords: ['hezbollah','lebanon','beirut'],                        coords:[33.89,35.50], name:'Hezbollah/Lebanon', color:'#bc8cff' },
   { keywords: ['houthi','yemen','sanaa','hodeidah'],                   coords:[15.35,44.21], name:'Yemen (Houthi)', color:'#bc8cff' },
   { keywords: ['hamas','gaza','islamic jihad'],                        coords:[31.50,34.47], name:'Gaza',          color:'#bc8cff' },
-  { keywords: ['israel','idf','israeli air force','israeli military'], coords:[32.08,34.78], name:'Israel',        color:'#3fb950' },
+  { keywords: ['israel','idf','iaf','israeli air force','israeli military','israeli forces'], coords:[32.08,34.78], name:'Israel', color:'#3fb950' },
   { keywords: ['united states','u.s. military','pentagon','navy','american forces'], coords:[31.8,29.5], name:'US Forces', color:'#58a6ff' },
 ];
 

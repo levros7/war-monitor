@@ -305,7 +305,7 @@ function renderNewsCards(articles, grid, isFallback) {
 // ============================================================
 //  LIVE MISSILE ALERTS FEED
 // ============================================================
-function missileIcon(type) {
+function missileEmoji(type) {
   if (type === 'drone' || type === 'drone attack') return '🛸';
   if (type === 'ballistic') return '🚀';
   if (type === 'airstrike') return '✈️';
@@ -351,7 +351,7 @@ function renderMissileAlerts(events) {
   }
   feed.innerHTML = events.map((e, i) => `
     <div class="missile-alert-item ${i === 0 ? 'new' : ''}">
-      <div class="missile-alert-icon">${missileIcon(e.type)}</div>
+      <div class="missile-alert-icon">${missileEmoji(e.type)}</div>
       <div class="missile-alert-body">
         <div class="missile-alert-title">
           ${e.url ? `<a href="${e.url}" target="_blank" rel="noopener">${e.title}</a>` : e.title}
