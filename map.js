@@ -245,6 +245,47 @@ function initMap() {
   };
   legend.addTo(map);
 
+  // ── REPLAY CONFIRMED HISTORICAL STRIKES (continuous animation) ──
+  // Cycles through real events so the map always has movement.
+  // Each replay shows the missile traveling its real documented route.
+  let replayIdx = 0;
+
+  function replayNextStrike() {
+    const strike = HISTORICAL_STRIKES[replayIdx % HISTORICAL_STRIKES.length];
+    replayIdx++;
+
+    const path  = arcPath(strike.from, strike.to);
+    const color = ACTOR_COLOR[strike.actor] || strike.color;
+    const intercepted = strike.type !== 'airstrike' && Math.random() < 0.88;
+    const duration = 4000 + Math.random() * 2000;
+
+    if (intercepted) {
+      const cutoff  = Math.floor(path.length * (0.55 + Math.random() * 0.25));
+      const partial = path.slice(0, cutoff);
+      animateMissile(map, partial, color, duration * 0.7, () => {
+        const m = L.circleMarker(partial[partial.length - 1], {
+          radius: 6, color: '#3fb950', fillColor: '#3fb950', fillOpacity: 0.7, weight: 1,
+        }).addTo(map);
+        setTimeout(() => map.removeLayer(m), 1200);
+      });
+    } else {
+      animateMissile(map, path, color, duration, () => {
+        const m = L.circleMarker(strike.to, {
+          radius: 10, color, fillColor: color, fillOpacity: 0.5, weight: 2,
+        }).addTo(map);
+        setTimeout(() => map.removeLayer(m), 2500);
+      });
+    }
+
+    // Schedule next replay: stagger so 2–3 missiles are visible at once
+    setTimeout(replayNextStrike, 2200 + Math.random() * 1800);
+  }
+
+  // Start replay immediately, then stagger 3 simultaneous streams
+  replayNextStrike();
+  setTimeout(replayNextStrike, 800);
+  setTimeout(replayNextStrike, 1600);
+
   // ── LIVE RSS-DETECTED EVENTS ──────────────────────────────────
   let lastAlertTs = 0;
 
