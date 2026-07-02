@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax-check JS files
+        run: |
+          node -c server.js
+          node -c app.js
+          node -c map.js
+      - name: Server boots and responds
+        run: |
+          npm ci
+          PORT=3999 node server.js &
+          sleep 3
+          curl -sf http://localhost:3999/api/war-status
+          curl -sf -o /dev/null http://localhost:3999/
+      - name: Secret scan — no API keys in client code
+        run: |
+          ! grep -nE "apikey=[a-f0-9]{16,}|[0-9]{8,10}:[A-Za-z0-9_-]{35}" app.js map.js index.html
