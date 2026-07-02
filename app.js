@@ -192,7 +192,7 @@ async function checkWarStatus() {
 // ============================================================
 //  MARKET CARD UPDATER
 // ============================================================
-let prevBTC = null, prevSP = null, prevOil = null;
+let prevBTC = null, prevSP = null, prevOil = null, prevLMT = null;
 
 function updateCard(id, priceEl, changeEl, price, change, symbol, prev, sparkId, upColor = '#3fb950') {
   const card = document.getElementById(id);
@@ -275,6 +275,19 @@ async function fetchOil() {
   } catch (e) {
     document.getElementById('oil-price').textContent = 'Error';
     console.warn('Oil fetch failed:', e.message);
+  }
+}
+
+async function fetchLMT() {
+  try {
+    const data = await fetchMarket('LMT');
+    updateCard('lmt-card', 'lmt-price', 'lmt-change', data.price, data.change, '$', prevLMT, 'lmt-spark');
+    sparkline('lmt-spark', data.history, data.change >= 0 ? '#3fb950' : '#f85149');
+    checkPriceAlert('Lockheed Martin', 'LMT', data.price, data.change);
+    prevLMT = data.price;
+  } catch (e) {
+    document.getElementById('lmt-price').textContent = 'Error';
+    console.warn('LMT fetch failed:', e.message);
   }
 }
 
@@ -490,7 +503,7 @@ function animateCounter(id, target, duration = 1200) {
 // ============================================================
 async function refresh() {
   updateTimestamp();
-  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchFearGreed(), fetchMissileAlerts(), fetchNews(), fetchAndRenderTimeline()]);
+  await Promise.allSettled([fetchBTC(), fetchSP500(), fetchOil(), fetchLMT(), fetchFearGreed(), fetchMissileAlerts(), fetchNews(), fetchAndRenderTimeline()]);
   checkWarStatus();
 }
 
