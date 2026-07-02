@@ -38,7 +38,7 @@ Two separate Railway services work together:
 
 - `server.js` — Express server. All `/api/*` routes live here. Scans RSS feeds every 2 min for missile events, stores in `missileEvents[]` (in-memory, resets on restart). Also fetches BTC (Binance), market data (Yahoo Finance), Fear & Greed (alternative.me), and GNews.
 - `app.js` — Client-side JS. Fetches all data from `/api/*` routes (never calls external APIs directly). Updates DOM for prices, missile alerts, Fear & Greed gauge, news cards.
-- `map.js` — Leaflet.js conflict map. `HISTORICAL_STRIKES` array contains 24+ real confirmed events with lat/lng coords. `replayNextStrike()` cycles through them continuously (3 parallel streams). `fetchLiveMissileAlerts()` polls `/api/missile-alerts?since=` every 30s for new RSS-detected events.
+- `map.js` — Leaflet.js conflict map. Animates ONLY live RSS-detected events — the historical-strike replay loop was removed at user request (July 2026); the map is intentionally quiet between detections. `fetchLiveMissileAlerts()` polls `/api/missile-alerts?since=` every 30s.
 - `index.html` / `style.css` — Static dashboard UI.
 
 ### Key API endpoints

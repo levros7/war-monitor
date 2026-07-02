@@ -1,64 +1,10 @@
 // ============================================================
 //  map.js — OSINT Conflict Map
-//  Professional threat-tracker style with actor layer controls
+//  Live RSS-detected strike events only (no simulated replay)
 //  - Comet trail animation (bright head + fading trail)
 //  - Per-actor layer toggles (show/hide each group)
-//  - Impact cluster dots at target locations
-//  - Live RSS event overlay
+//  - Live RSS event overlay, polled every 30s
 // ============================================================
-
-const HISTORICAL_STRIKES = [
-  // Iran → Israel
-  { date: 'Feb 28', from: [35.52, 51.77], to: [32.08, 34.78], actor: 'IRGC',     label: 'IRGC — ~170 ballistic missiles fired at Israel', type: 'ballistic' },
-  { date: 'Feb 28', from: [35.52, 51.77], to: [32.82, 35.00], actor: 'IRGC',     label: 'IRGC ballistic missiles — Haifa', type: 'ballistic' },
-  { date: 'Feb 28', from: [34.32, 47.07], to: [32.08, 34.78], actor: 'IRGC',     label: 'IRGC mobile launchers — Tel Aviv barrage', type: 'ballistic' },
-  { date: 'Mar 1',  from: [35.52, 51.77], to: [31.72, 34.99], actor: 'IRGC',     label: 'Iranian missiles breach Iron Dome — Beit Shemesh struck', type: 'ballistic' },
-  { date: 'Apr 3',  from: [35.52, 51.77], to: [32.90, 35.30], actor: 'IRGC',     label: 'Iranian attack — cluster munitions, northern Israel', type: 'missile' },
-  { date: 'Feb 28', from: [38.08, 46.30], to: [32.08, 34.78], actor: 'IRGC',     label: 'Tabriz IRGC base — northern salvo at Israel', type: 'ballistic' },
-
-  // Iran → Gulf states
-  { date: 'Feb 28', from: [31.32, 48.67], to: [26.22, 50.59], actor: 'IRGC',     label: 'Iran strikes US 5th Fleet HQ — Manama, Bahrain', type: 'missile' },
-  { date: 'Feb 28', from: [31.32, 48.67], to: [25.20, 55.27], actor: 'IRGC',     label: 'Iran hits Dubai & Abu Dhabi airports (UAE)', type: 'missile' },
-  { date: 'Mar 2',  from: [31.32, 48.67], to: [25.28, 51.54], actor: 'IRGC',     label: 'Iran strikes Qatar LNG facilities — Doha', type: 'missile' },
-  { date: 'Mar 2',  from: [31.32, 48.67], to: [29.37, 47.98], actor: 'IRGC',     label: 'Iran strikes US bases in Kuwait — 6 killed', type: 'missile' },
-  { date: 'Mar 18', from: [31.32, 48.67], to: [25.28, 51.54], actor: 'IRGC',     label: 'Iran retaliates — Qatar LNG production facility struck', type: 'missile' },
-
-  // Houthi → Israel / Red Sea
-  { date: 'Feb 28', from: [15.35, 44.21], to: [32.08, 34.78], actor: 'Houthi',   label: 'Houthi ballistic salvo — Tel Aviv', type: 'ballistic' },
-  { date: 'Mar 5',  from: [14.80, 42.95], to: [32.08, 34.78], actor: 'Houthi',   label: 'Houthi coastal battery — Tel Aviv barrage', type: 'ballistic' },
-  { date: 'Mar 12', from: [15.35, 44.21], to: [29.54, 34.95], actor: 'Houthi',   label: 'Houthi missiles — Eilat / Red Sea', type: 'ballistic' },
-
-  // Hezbollah → Israel
-  { date: 'Mar 2',  from: [33.89, 35.50], to: [32.82, 35.00], actor: 'Hezbollah', label: 'Hezbollah rocket barrage — northern Israel (Haifa)', type: 'rocket' },
-  { date: 'Mar 2',  from: [33.27, 35.57], to: [32.96, 35.50], actor: 'Hezbollah', label: 'Hezbollah rockets — Kiryat Shmona & Safed', type: 'rocket' },
-  { date: 'Apr 2',  from: [33.89, 35.50], to: [32.08, 34.78], actor: 'Hezbollah', label: 'Hezbollah long-range rocket salvo — Tel Aviv area', type: 'rocket' },
-
-  // IDF → Iran
-  { date: 'Feb 28', from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF',      label: 'IDF/USAF strike Tehran command centers', type: 'airstrike' },
-  { date: 'Feb 28', from: [31.21, 35.01], to: [33.72, 51.93], actor: 'IDF',      label: 'IDF strikes Natanz nuclear enrichment complex', type: 'airstrike' },
-  { date: 'Feb 28', from: [31.21, 35.01], to: [32.63, 51.68], actor: 'IDF',      label: 'IDF strikes Isfahan missile base', type: 'airstrike' },
-  { date: 'Mar 18', from: [31.21, 35.01], to: [27.13, 52.62], actor: 'IDF',      label: 'IDF strikes South Pars gas field', type: 'airstrike' },
-  { date: 'Mar 21', from: [31.21, 35.01], to: [33.72, 51.93], actor: 'IDF',      label: 'IDF + US strike Natanz with bunker-busters', type: 'airstrike' },
-  { date: 'Mar 26', from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF',      label: 'IDF kills IRGC Navy Chief Tangsiri — Tehran', type: 'airstrike' },
-  { date: 'Mar 26', from: [31.21, 35.01], to: [34.10, 49.78], actor: 'IDF',      label: 'IDF strikes Arak heavy water reactor', type: 'airstrike' },
-  { date: 'Apr 1',  from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF',      label: 'IDF strikes Tehran — energy infrastructure', type: 'airstrike' },
-  { date: 'Apr 3',  from: [31.21, 35.01], to: [35.69, 51.39], actor: 'IDF',      label: 'IAF hits petrochemicals, air defense & missile sites — Tehran', type: 'airstrike' },
-  { date: 'Mar 26', from: [31.84, 34.82], to: [31.90, 54.37], actor: 'IDF',      label: 'IDF strikes Yazd yellowcake plant', type: 'airstrike' },
-
-  // US → Iran
-  { date: 'Feb 28', from: [21.48, 39.19], to: [35.69, 51.39], actor: 'USN',      label: 'US Tomahawk cruise missiles (Red Sea) strike Tehran', type: 'missile' },
-  { date: 'Mar 21', from: [25.50, 57.80], to: [33.72, 51.93], actor: 'USN',      label: 'US Navy — Natanz bunker-buster strike', type: 'airstrike' },
-  { date: 'Mar 3',  from: [25.50, 57.80], to: [26.50, 56.30], actor: 'USN',      label: 'US Navy sinks IRIS Fateh submarine — Strait of Hormuz', type: 'strike' },
-];
-
-// ── ACTOR → LAYER GROUP MAPPING ───────────────────────────────
-const ACTOR_COLOR = {
-  IRGC:      '#f85149',
-  IDF:       '#3fb950',
-  USN:       '#58a6ff',
-  Houthi:    '#ff6b35',
-  Hezbollah: '#e3693a',
-};
 
 // Layer groups: name, color, which actors belong
 const LAYER_GROUPS = [
@@ -71,13 +17,6 @@ const LAYER_GROUPS = [
 
 // Set of active layer IDs — all on by default
 const activeLayers = new Set(LAYER_GROUPS.map(g => g.id));
-
-function actorToLayer(actor) {
-  for (const g of LAYER_GROUPS) {
-    if (g.actors.includes(actor)) return g.id;
-  }
-  return null;
-}
 
 // ── PATH HELPERS ──────────────────────────────────────────────
 function arcPath(from, to, steps = 80) {
@@ -234,52 +173,9 @@ function initMap() {
   L.control.zoom({ position: 'bottomleft' }).addTo(map);
   createLayerControl().addTo(map);
 
-  // ── REPLAY CONFIRMED HISTORICAL STRIKES ──────────────────────
-  let replayIdx = 0;
-
-  function replayNextStrike() {
-    // Advance index, skip if layer is off (but still schedule next)
-    const strike    = HISTORICAL_STRIKES[replayIdx % HISTORICAL_STRIKES.length];
-    replayIdx++;
-
-    const layerId = actorToLayer(strike.actor);
-    const delay   = 1800 + Math.random() * 2000;
-
-    if (layerId && activeLayers.has(layerId)) {
-      const color  = ACTOR_COLOR[strike.actor] || '#f85149';
-      const dist   = arcDist(strike.from, strike.to);
-      const path   = arcPath(strike.from, strike.to);
-      const intercepted = strike.type !== 'airstrike' && strike.type !== 'strike' && Math.random() < 0.85;
-
-      const duration = dist < 3  ? 2800 + Math.random() * 1000
-                     : dist < 10 ? 4000 + Math.random() * 2000
-                     :             5500 + Math.random() * 3000;
-
-      if (intercepted) {
-        const cutoff  = Math.floor(path.length * (0.5 + Math.random() * 0.3));
-        const partial = path.slice(0, cutoff);
-        animateComet(map, partial, color, duration * 0.7, () => {
-          const m = L.circleMarker(partial[partial.length - 1], {
-            radius: 6, color: '#3fb950', fillColor: '#3fb950', fillOpacity: 0.8, weight: 0,
-          }).addTo(map);
-          setTimeout(() => { try { map.removeLayer(m); } catch (_) {} }, 800);
-        });
-      } else {
-        animateComet(map, path, color, duration, () => {
-          impactFlash(map, strike.to, color);
-        });
-      }
-    }
-
-    setTimeout(replayNextStrike, delay);
-  }
-
-  // 3 staggered streams — always 2-3 missiles visible simultaneously
-  replayNextStrike();
-  setTimeout(replayNextStrike, 700);
-  setTimeout(replayNextStrike, 1400);
-
   // ── LIVE RSS-DETECTED EVENTS ──────────────────────────────────
+  // Historical-strike replay removed — the map animates only real
+  // RSS-detected events, so it stays quiet between detections.
   let lastAlertTs = 0;
 
   function flashLaunchBanner(title, originName, targetName) {
