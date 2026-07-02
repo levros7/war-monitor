@@ -281,9 +281,10 @@ function initMap() {
     const icon = title.toLowerCase().includes('drone')    ? '🛸' :
                  title.toLowerCase().includes('ballistic') ? '🚀' :
                  title.toLowerCase().includes('rocket')    ? '💥' : '✈️';
-    banner.innerHTML = `${icon} <b>LIVE STRIKE DETECTED</b> — ${title}` +
-      (originName ? ` · <b>${originName}</b>` : '') +
-      (targetName ? ` ➜ <b>${targetName}</b>` : '');
+    // escapeHtml is defined in app.js, which loads before map.js
+    banner.innerHTML = `${icon} <b>LIVE STRIKE DETECTED</b> — ${escapeHtml(title)}` +
+      (originName ? ` · <b>${escapeHtml(originName)}</b>` : '') +
+      (targetName ? ` ➜ <b>${escapeHtml(targetName)}</b>` : '');
     banner.style.display = 'block';
     setTimeout(() => { banner.style.display = 'none'; }, 20000);
   }

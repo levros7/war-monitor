@@ -3,11 +3,22 @@
 //  APIs used:
 //    BTC:   CoinGecko (free, no key)
 //    S&P500 / Oil: Yahoo Finance via allorigins CORS proxy
-//    News:  GNews API (free tier — add your key below)
+//    News:  GNews API — server-side only, via /api/news and /api/events
 // ============================================================
 
-const GNEWS_API_KEY = '1a32d5631729d69af83a627f5d660a79';
 const REFRESH_MS = 60_000; // refresh every 60 seconds
+
+// Escape external strings (RSS/GNews titles, URLs) before innerHTML injection.
+// Also used by map.js (loaded after app.js).
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Only allow http(s) links from external data — blocks javascript: URLs
+function safeUrl(u) {
+  return /^https?:\/\//i.test(u || '') ? escapeHtml(u) : '#';
+}
 
 // ============================================================
 //  TIMELINE DATA (manually curated, key conflict events)
@@ -88,11 +99,11 @@ function renderTimeline(events) {
   const container = document.getElementById('timeline');
   const items = [...events].reverse(); // newest first
   container.innerHTML = items.map(e => `
-    <div class="tl-item ${e.actor}">
-      <div class="tl-date">${e.date}</div>
-      <span class="tl-actor ${e.actor}">${e.actor.toUpperCase()}</span>
-      <div class="tl-event">${e.url ? `<a href="${e.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted">${e.event}</a>` : e.event}</div>
-      ${e.detail ? `<div class="tl-detail">${e.detail}</div>` : ''}
+    <div class="tl-item ${escapeHtml(e.actor)}">
+      <div class="tl-date">${escapeHtml(e.date)}</div>
+      <span class="tl-actor ${escapeHtml(e.actor)}">${escapeHtml(e.actor.toUpperCase())}</span>
+      <div class="tl-event">${e.url ? `<a href="${safeUrl(e.url)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted">${escapeHtml(e.event)}</a>` : escapeHtml(e.event)}</div>
+      ${e.detail ? `<div class="tl-detail">${escapeHtml(e.detail)}</div>` : ''}
     </div>
   `).join('');
 }
@@ -144,8 +155,10 @@ function checkPriceAlert(label, ticker, price, change) {
   if (!_baselinePrices[ticker]) { _baselinePrices[ticker] = price; return; }
   const move = ((price - _baselinePrices[ticker]) / _baselinePrices[ticker]) * 100;
   if (Math.abs(move) >= 3) {
+    _baselinePrices[ticker] = price; // reset so the same move doesn't re-alert every refresh
     const dir = move > 0 ? '▲ SURGE' : '▼ DROP';
     const banner = document.getElementById('price-alert-banner');
+    if (!banner) return;
     banner.textContent = `⚠️ ${label} ${dir} ${Math.abs(move).toFixed(1)}% — WAR MARKET ALERT`;
     banner.style.display = 'block';
     banner.style.animation = 'none';
@@ -163,14 +176,13 @@ async function checkWarStatus() {
     const res = await fetch('/api/war-status', { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     const cb = document.getElementById('ceasefire-banner');
-    const warDot = document.querySelector('.status-dot.red');
-    const warVal = document.querySelector('.status-value.red');
     if (data.ceasefire) {
       cb.textContent = `🕊️ CEASEFIRE SIGNAL DETECTED — "${data.ceasefireHeadline}"`;
       cb.style.display = 'block';
       // Flip war status to green
       document.querySelectorAll('.status-dot.red').forEach(d => { d.className = 'status-dot green'; });
-      document.querySelectorAll('#war-status-val').forEach(v => { v.textContent = 'CEASEFIRE'; v.className = 'status-value green'; });
+      const warVal = document.getElementById('war-status-val');
+      if (warVal) { warVal.textContent = 'CEASEFIRE'; warVal.className = 'status-value green'; }
     } else {
       cb.style.display = 'none';
     }
@@ -294,10 +306,10 @@ async function fetchNews() {
 
 function renderNewsCards(articles, grid, isFallback) {
   grid.innerHTML = articles.map(a => `
-    <a class="news-card" href="${a.url}" target="_blank" rel="noopener noreferrer">
-      <div class="news-source">${a.source}${isFallback ? ' · SAMPLE DATA' : ''}</div>
-      <div class="news-title">${a.title}</div>
-      <div class="news-date">${a.date}</div>
+    <a class="news-card" href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer">
+      <div class="news-source">${escapeHtml(a.source)}${isFallback ? ' · SAMPLE DATA' : ''}</div>
+      <div class="news-title">${escapeHtml(a.title)}</div>
+      <div class="news-date">${escapeHtml(a.date)}</div>
     </a>
   `).join('');
 }
@@ -363,12 +375,12 @@ function renderMissileAlerts(events) {
       <div class="missile-alert-icon">${missileEmoji(e.type)}</div>
       <div class="missile-alert-body">
         <div class="missile-alert-title">
-          ${e.url ? `<a href="${e.url}" target="_blank" rel="noopener">${e.title}</a>` : e.title}
+          ${e.url ? `<a href="${safeUrl(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.title)}</a>` : escapeHtml(e.title)}
         </div>
         <div class="missile-alert-meta">
-          ${e.origin ? `<span class="missile-alert-origin">📍 ${e.origin.name}</span>` : ''}
-          ${e.target ? `<span class="missile-alert-target">🎯 ${e.target.name}</span>` : ''}
-          <span>${e.source}</span>
+          ${e.origin ? `<span class="missile-alert-origin">📍 ${escapeHtml(e.origin.name)}</span>` : ''}
+          ${e.target ? `<span class="missile-alert-target">🎯 ${escapeHtml(e.target.name)}</span>` : ''}
+          <span>${escapeHtml(e.source)}</span>
           <span class="missile-alert-time">${timeSince(e.timestamp)}</span>
         </div>
       </div>

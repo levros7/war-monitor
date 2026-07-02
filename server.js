@@ -108,6 +108,8 @@ let warStatus = {
   strikesDetected: 0,
   lastChecked: null,
 };
+const _seenWarArticleTitles = new Set();
+const MAX_SEEN_WAR_ARTICLES = 500; // bound memory — evict oldest (insertion order)
 
 app.get('/api/war-status', (req, res) => res.json(warStatus));
 
@@ -123,10 +125,18 @@ async function scanNewsForWarStatus() {
     const CEASEFIRE = ['ceasefire','cease fire','peace deal','truce','armistice','agreement reached'];
     const MISSILES  = ['missile','ballistic','rocket','drone','barrage','salvo','strike','attack'];
     const cfHit = articles.find(a => CEASEFIRE.some(k => a.title.toLowerCase().includes(k)));
-    const missileCount = articles.filter(a => MISSILES.some(k => a.title.toLowerCase().includes(k))).length;
+    const newMissileArticles = articles.filter(a =>
+      !_seenWarArticleTitles.has(a.title) && MISSILES.some(k => a.title.toLowerCase().includes(k))
+    );
+    articles.forEach(a => {
+      _seenWarArticleTitles.add(a.title);
+      if (_seenWarArticleTitles.size > MAX_SEEN_WAR_ARTICLES) {
+        _seenWarArticleTitles.delete(_seenWarArticleTitles.values().next().value);
+      }
+    });
     warStatus.ceasefire = !!cfHit;
     warStatus.ceasefireHeadline = cfHit ? cfHit.title : '';
-    warStatus.strikesDetected += missileCount;
+    warStatus.strikesDetected += newMissileArticles.length;
     warStatus.lastChecked = new Date().toISOString();
   } catch (e) { /* silent */ }
 }
@@ -244,8 +254,14 @@ app.post('/api/telegram/briefing', async (req, res) => {
 });
 
 // Telegram webhook — handle /status and /briefing commands
+const TG_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET || '';
 app.use(express.json());
 app.post('/api/telegram/webhook', async (req, res) => {
+  // If a secret is configured (set the same value via Telegram's setWebhook
+  // `secret_token` param), reject requests missing/mismatching it.
+  if (TG_WEBHOOK_SECRET && req.get('X-Telegram-Bot-Api-Secret-Token') !== TG_WEBHOOK_SECRET) {
+    return res.status(401).json({ ok: false });
+  }
   res.json({ ok: true }); // ack immediately
   const msg = req.body?.message;
   if (!msg) return;
@@ -332,12 +348,12 @@ const MISSILE_KEYWORDS = [
 ];
 
 const ORIGIN_MAP = [
-  { keywords: ['iran','irgc','revolutionary guard','tehran'],          coords:[35.69,51.39], name:'Iran',          color:'#bc8cff' },
-  { keywords: ['hezbollah','lebanon','beirut'],                        coords:[33.89,35.50], name:'Hezbollah/Lebanon', color:'#bc8cff' },
-  { keywords: ['houthi','yemen','sanaa','hodeidah'],                   coords:[15.35,44.21], name:'Yemen (Houthi)', color:'#bc8cff' },
+  { keywords: ['iran','irgc','revolutionary guard','tehran'],          coords:[35.69,51.39], name:'Iran',          color:'#f85149' },
+  { keywords: ['hezbollah','lebanon','beirut'],                        coords:[33.89,35.50], name:'Hezbollah/Lebanon', color:'#e3693a' },
+  { keywords: ['houthi','yemen','sanaa','hodeidah'],                   coords:[15.35,44.21], name:'Yemen (Houthi)', color:'#ff6b35' },
   { keywords: ['hamas','gaza','islamic jihad'],                        coords:[31.50,34.47], name:'Gaza',          color:'#bc8cff' },
   { keywords: ['israel','idf','iaf','israeli air force','israeli military','israeli forces'], coords:[32.08,34.78], name:'Israel', color:'#3fb950' },
-  { keywords: ['united states','u.s. military','pentagon','navy','american forces'], coords:[31.8,29.5], name:'US Forces', color:'#58a6ff' },
+  { keywords: ['united states','u.s. military','pentagon','us navy','u.s. navy','american forces'], coords:[31.8,29.5], name:'US Forces', color:'#58a6ff' },
 ];
 
 const TARGET_MAP = [
@@ -355,6 +371,7 @@ const TARGET_MAP = [
 
 const missileEvents = [];  // ring buffer — last 30 events
 const _seenMissileTitles = new Set();
+const MAX_SEEN_TITLES = 500; // bound memory — evict oldest (insertion order)
 
 function extractLocation(title, map) {
   const t = title.toLowerCase();
@@ -393,10 +410,17 @@ async function scanRssForMissiles() {
         if (_seenMissileTitles.has(item.title)) continue;
 
         _seenMissileTitles.add(item.title);
-        newFound++;
+        if (_seenMissileTitles.size > MAX_SEEN_TITLES) {
+          _seenMissileTitles.delete(_seenMissileTitles.values().next().value);
+        }
 
         const origin = extractLocation(item.title, ORIGIN_MAP);
         const target = extractLocation(item.title, TARGET_MAP);
+
+        // Skip events with no tie to the monitored theater —
+        // otherwise Russia-Ukraine headlines flood the feed
+        if (!origin && !target) continue;
+        newFound++;
 
         const event = {
           id:        Date.now() + Math.random(),
