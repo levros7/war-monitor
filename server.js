@@ -329,7 +329,10 @@ app.post('/api/telegram/webhook', async (req, res) => {
   }
 });
 
-if (TG_TOKEN && TG_CHAT_ID) scheduleDailyBriefing();
+// Auto-scheduled briefing disabled — agent_system's war_telegram_agent.py
+// already sends the 09:00 UTC daily briefing; both running = duplicates.
+// Manual trigger via POST /api/telegram/briefing still works.
+// if (TG_TOKEN && TG_CHAT_ID) scheduleDailyBriefing();
 
 // ============================================================
 //  LIVE MISSILE TRACKER
