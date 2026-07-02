@@ -85,10 +85,17 @@ function arcPath(from, to, steps = 80) {
   const dlat = to[0] - from[0];
   const dlng = to[1] - from[1];
   const dist = Math.sqrt(dlat * dlat + dlng * dlng);
-  const bow  = Math.min(Math.max(dist * 0.18, 1.8), 5.5);
+  if (dist < 0.01) return [from, to];
+  // Bow perpendicular to the flight path (toward the north side) —
+  // a fixed northward bow made short southward shots (Lebanon→Israel)
+  // loop backward over their own launch point
+  const bow = Math.min(Math.max(dist * 0.22, 0.4), 5.5);
+  let px = -dlng / dist, py = dlat / dist;
+  if (px < 0) { px = -px; py = -py; }
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    pts.push([from[0] + dlat * t + Math.sin(Math.PI * t) * bow, from[1] + dlng * t]);
+    const s = Math.sin(Math.PI * t) * bow;
+    pts.push([from[0] + dlat * t + px * s, from[1] + dlng * t + py * s]);
   }
   return pts;
 }
@@ -305,6 +312,14 @@ function initMap() {
     } else return;
 
     if (layerId && !activeLayers.has(layerId)) return;
+
+    // Origin ≈ target (e.g. headline matched only "Israel" for both):
+    // no meaningful trajectory — show impact only
+    if (arcDist(from, to) < 0.05) {
+      impactFlash(map, to, color);
+      flashLaunchBanner(event.title, event.origin?.name, event.target?.name);
+      return;
+    }
 
     const path = arcPath(from, to);
     animateComet(map, path, color, 7000, () => impactFlash(map, to, color));
