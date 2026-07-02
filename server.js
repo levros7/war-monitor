@@ -169,10 +169,11 @@ function sendTelegram(text) {
 
 // Fetch all market data for briefing
 async function getMarketSnapshot() {
-  const [btcRaw, spRaw, oilRaw] = await Promise.allSettled([
+  const [btcRaw, spRaw, oilRaw, lmtRaw] = await Promise.allSettled([
     fetchJSON('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
     fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=2d`),
     fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/CL%3DF?interval=1d&range=2d`),
+    fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/LMT?interval=1d&range=2d`),
   ]);
 
   const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -203,14 +204,23 @@ async function getMarketSnapshot() {
     oilLine = `🛢 <b>WTI Crude Oil:</b> $${fmt(p)}  ${sign(c)} ${Math.abs(c).toFixed(2)}%`;
   }
 
-  return { btcLine, spLine, oilLine };
+  let lmtLine = '🛡 Lockheed Martin: N/A';
+  if (lmtRaw.status === 'fulfilled') {
+    const closes = lmtRaw.value.chart.result[0].indicators.quote[0].close.filter(Boolean);
+    const p = closes[closes.length - 1];
+    const prev = lmtRaw.value.chart.result[0].meta.previousClose || closes[closes.length - 2];
+    const c = ((p - prev) / prev) * 100;
+    lmtLine = `🛡 <b>Lockheed Martin:</b> $${fmt(p)}  ${sign(c)} ${Math.abs(c).toFixed(2)}%`;
+  }
+
+  return { btcLine, spLine, oilLine, lmtLine };
 }
 
 // Daily briefing — POST /api/telegram/briefing or scheduled
 async function sendDailyBriefing() {
   const warStart = new Date('2026-02-28T00:00:00Z');
   const dayNum = Math.floor((Date.now() - warStart) / 86400000) + 1;
-  const { btcLine, spLine, oilLine } = await getMarketSnapshot();
+  const { btcLine, spLine, oilLine, lmtLine } = await getMarketSnapshot();
   const msg = [
     `🚨 <b>WAR MONITOR — DAY ${dayNum}</b>`,
     `📅 ${new Date().toUTCString()}`,
@@ -223,6 +233,7 @@ async function sendDailyBriefing() {
     btcLine,
     spLine,
     oilLine,
+    lmtLine,
     '',
     `🎯 <b>STRIKE TRACKER (2026)</b>`,
     `Missiles/Drones Launched: ~500+`,
@@ -300,7 +311,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
       `🌐 <a href="https://vigilant-forgiveness-production-6c0f.up.railway.app">Open Live Dashboard</a>`
     );
   } else if (text === '/briefing' || text === '/status') {
-    const { btcLine, spLine, oilLine } = await getMarketSnapshot();
+    const { btcLine, spLine, oilLine, lmtLine } = await getMarketSnapshot();
     await reply([
       `🚨 <b>WAR MONITOR — DAY ${dayNum}</b>`,
       `📅 ${new Date().toUTCString()}`,
@@ -310,7 +321,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
       `🔴 Ceasefire: NONE  |  Nuclear Sites: STRUCK`,
       '',
       `📈 <b>MARKET IMPACT</b>`,
-      btcLine, spLine, oilLine,
+      btcLine, spLine, oilLine, lmtLine,
       '',
       `🎯 Missiles launched (2026): ~500+`,
       `✅ Intercepted: ~450 (~90%)`,
