@@ -404,6 +404,30 @@ function missileType(title) {
 
 let _lastScanResult = { scannedAt: null, itemsChecked: 0, newEvents: 0, errors: [] };
 
+// Theater-relevant RSS headlines — free fallback for /api/news and
+// /api/events when GNews is empty or rate-limited
+const rssNews = [];
+const _seenRssNewsTitles = new Set();
+
+function collectRssNews(item, feedName) {
+  const t = item.title.toLowerCase();
+  const relevant = ORIGIN_MAP.some(e => e.keywords.some(k => t.includes(k))) ||
+                   TARGET_MAP.some(e => e.keywords.some(k => t.includes(k)));
+  if (!relevant || _seenRssNewsTitles.has(item.title)) return;
+  _seenRssNewsTitles.add(item.title);
+  if (_seenRssNewsTitles.size > MAX_SEEN_TITLES) {
+    _seenRssNewsTitles.delete(_seenRssNewsTitles.values().next().value);
+  }
+  const pub = item.pubDate ? new Date(item.pubDate) : new Date();
+  rssNews.unshift({
+    title:  item.title,
+    source: feedName,
+    url:    item.link,
+    date:   (isNaN(pub) ? new Date() : pub).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  });
+  if (rssNews.length > 20) rssNews.pop();
+}
+
 async function scanRssForMissiles() {
   const scanStart = Date.now();
   let totalChecked = 0;
@@ -418,6 +442,7 @@ async function scanRssForMissiles() {
       console.log(`[MissileTracker] ${feed.name}: parsed ${items.length} items`);
 
       for (const item of items) {
+        collectRssNews(item, feed.name);
         const t = item.title.toLowerCase();
         const isMissile = MISSILE_KEYWORDS.some(k => t.includes(k));
         if (!isMissile) continue;
@@ -510,63 +535,80 @@ app.get('/api/fear-greed', async (req, res) => {
 const EVENTS_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours — shared by /api/news and /api/events
 
 // /api/news — news cards for dashboard (cached 4h — 6 req/day)
-let _newsCache = { data: [], fetchedAt: 0 };
+// attemptedAt throttles GNews calls even on empty/error results — without it,
+// every 60s dashboard refresh hit GNews and burned the daily quota
+let _newsCache = { data: [], fetchedAt: 0, attemptedAt: 0 };
 
 app.get('/api/news', async (req, res) => {
-  if (!GNEWS_KEY) return res.json([]);
   if (_newsCache.data.length && Date.now() - _newsCache.fetchedAt < EVENTS_CACHE_TTL) {
     return res.json(_newsCache.data);
   }
-  try {
-    const q = encodeURIComponent('Iran Israel war missile attack 2026');
-    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=6&sortby=publishedAt&apikey=${GNEWS_KEY}`;
-    const data = await fetchJSON(url);
-    const articles = (data.articles || []).map(a => ({
-      title: a.title,
-      source: a.source?.name || 'News',
-      date: new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      url: a.url,
-    }));
-    _newsCache = { data: articles, fetchedAt: Date.now() };
-    res.json(articles);
-  } catch (e) {
-    if (_newsCache.data.length) return res.json(_newsCache.data);
-    res.status(500).json({ error: e.message });
+  if (GNEWS_KEY && Date.now() - _newsCache.attemptedAt >= EVENTS_CACHE_TTL) {
+    _newsCache.attemptedAt = Date.now();
+    try {
+      const q = encodeURIComponent('Iran Israel');
+      const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
+      const data = await fetchJSON(url);
+      const articles = (data.articles || []).map(a => ({
+        title: a.title,
+        source: a.source?.name || 'News',
+        date: new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        url: a.url,
+      }));
+      if (articles.length) {
+        _newsCache = { data: articles, fetchedAt: Date.now(), attemptedAt: Date.now() };
+        return res.json(articles);
+      }
+    } catch (e) {
+      console.error(`[News] GNews error: ${e.message}`);
+    }
   }
+  // Stale GNews beats nothing; live RSS headlines beat both
+  if (_newsCache.data.length) return res.json(_newsCache.data);
+  res.json(rssNews.slice(0, 10));
 });
 
 // /api/events — live key events from GNews (cached 4h — 6 req/day)
 const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
-let _eventsCache = { data: [], fetchedAt: 0 };
+let _eventsCache = { data: [], fetchedAt: 0, attemptedAt: 0 };
+
+function headlineActor(title) {
+  const t = title.toLowerCase();
+  if (t.includes('iran') && !t.includes('israel') && !t.includes('us ') && !t.includes('united states')) return 'iran';
+  if (t.includes('israel') && !t.includes('iran') && !t.includes('us ') && !t.includes('united states')) return 'israel';
+  return 'us';
+}
 
 app.get('/api/events', async (req, res) => {
-  if (!GNEWS_KEY) return res.status(500).json({ error: 'No GNEWS_API_KEY set' });
-
   // Serve cache if fresh
   if (_eventsCache.data.length && Date.now() - _eventsCache.fetchedAt < EVENTS_CACHE_TTL) {
     return res.json(_eventsCache.data);
   }
-
-  try {
-    const q = encodeURIComponent('Iran Israel war 2026');
-    const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
-    const data = await fetchJSON(url);
-    const events = (data.articles || []).map(a => {
-      const d = new Date(a.publishedAt);
-      const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const title = a.title.toLowerCase();
-      let actor = 'us';
-      if (title.includes('iran') && !title.includes('israel') && !title.includes('us ') && !title.includes('united states')) actor = 'iran';
-      else if (title.includes('israel') && !title.includes('iran') && !title.includes('us ') && !title.includes('united states')) actor = 'israel';
-      return { date, actor, event: a.title, detail: a.source?.name || '', url: a.url };
-    });
-    _eventsCache = { data: events, fetchedAt: Date.now() };
-    res.json(events);
-  } catch (e) {
-    // On error, return stale cache if available
-    if (_eventsCache.data.length) return res.json(_eventsCache.data);
-    res.status(500).json({ error: e.message });
+  // Throttle GNews attempts even on empty/error results (see /api/news)
+  if (GNEWS_KEY && Date.now() - _eventsCache.attemptedAt >= EVENTS_CACHE_TTL) {
+    _eventsCache.attemptedAt = Date.now();
+    try {
+      const q = encodeURIComponent('Iran Israel');
+      const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
+      const data = await fetchJSON(url);
+      const events = (data.articles || []).map(a => {
+        const d = new Date(a.publishedAt);
+        const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { date, actor: headlineActor(a.title), event: a.title, detail: a.source?.name || '', url: a.url };
+      });
+      if (events.length) {
+        _eventsCache = { data: events, fetchedAt: Date.now(), attemptedAt: Date.now() };
+        return res.json(events);
+      }
+    } catch (e) {
+      console.error(`[Events] GNews error: ${e.message}`);
+    }
   }
+  if (_eventsCache.data.length) return res.json(_eventsCache.data);
+  // RSS-derived fallback
+  res.json(rssNews.slice(0, 10).map(n => ({
+    date: n.date, actor: headlineActor(n.title), event: n.title, detail: n.source, url: n.url,
+  })));
 });
 
 app.listen(PORT, () => console.log(`War Monitor running on port ${PORT}`));
