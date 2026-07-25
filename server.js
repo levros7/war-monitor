@@ -118,13 +118,26 @@ async function scanNewsForWarStatus() {
   const GNEWS_KEY = process.env.GNEWS_API_KEY || '';
   if (!GNEWS_KEY) return;
   try {
-    const q = encodeURIComponent('Iran Israel war ceasefire missile 2026');
+    // Query must not contain "ceasefire" — it would bias results toward the
+    // exact word the detector tests for
+    const q = encodeURIComponent('Iran Israel war missile 2026');
     const url = `https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&sortby=publishedAt&apikey=${GNEWS_KEY}`;
     const data = await fetchJSON(url);
     const articles = data.articles || [];
-    const CEASEFIRE = ['ceasefire','cease fire','peace deal','truce','armistice','agreement reached'];
+    // A headline must positively announce a ceasefire — merely mentioning one
+    // ("Iran rejects ceasefire", "hopes for truce fade") must not flip the status
+    const CF_POSITIVE = ['ceasefire agreed','ceasefire reached','ceasefire signed',
+      'ceasefire takes effect','ceasefire in effect','ceasefire begins','ceasefire holding',
+      'truce agreed','truce reached','truce signed','truce takes effect',
+      'peace deal signed','peace deal reached','armistice signed'];
+    const CF_NEGATORS = ['reject','denie','deny','no ceasefire','no truce','collaps','fade',
+      'call for','calls for','calling for','push for','hope','urge','propos','demand',
+      'seek','doubt','without','fail','stall','rule out','rules out'];
     const MISSILES  = ['missile','ballistic','rocket','drone','barrage','salvo','strike','attack'];
-    const cfHit = articles.find(a => CEASEFIRE.some(k => a.title.toLowerCase().includes(k)));
+    const cfHit = articles.find(a => {
+      const t = a.title.toLowerCase();
+      return CF_POSITIVE.some(k => t.includes(k)) && !CF_NEGATORS.some(k => t.includes(k));
+    });
     const newMissileArticles = articles.filter(a =>
       !_seenWarArticleTitles.has(a.title) && MISSILES.some(k => a.title.toLowerCase().includes(k))
     );
@@ -134,8 +147,12 @@ async function scanNewsForWarStatus() {
         _seenWarArticleTitles.delete(_seenWarArticleTitles.values().next().value);
       }
     });
-    warStatus.ceasefire = !!cfHit;
-    warStatus.ceasefireHeadline = cfHit ? cfHit.title : '';
+    // Our own RSS missile scanner is the stronger signal: a strike detected in
+    // the last 6h vetoes a ceasefire headline
+    const RECENT_STRIKE_MS = 6 * 60 * 60 * 1000;
+    const recentStrike = missileEvents.some(e => Date.now() - e.timestamp < RECENT_STRIKE_MS);
+    warStatus.ceasefire = !!cfHit && !recentStrike;
+    warStatus.ceasefireHeadline = warStatus.ceasefire ? cfHit.title : '';
     warStatus.strikesDetected += newMissileArticles.length;
     warStatus.lastChecked = new Date().toISOString();
   } catch (e) { /* silent */ }

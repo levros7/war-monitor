@@ -176,15 +176,18 @@ async function checkWarStatus() {
     const res = await fetch('/api/war-status', { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     const cb = document.getElementById('ceasefire-banner');
+    const warVal = document.getElementById('war-status-val');
+    // Only the WAR STATUS dot — never the Hormuz / US-combat / other dots
+    const warDot = warVal?.closest('.status-item')?.querySelector('.status-dot');
     if (data.ceasefire) {
       cb.textContent = `🕊️ CEASEFIRE SIGNAL DETECTED — "${data.ceasefireHeadline}"`;
       cb.style.display = 'block';
-      // Flip war status to green
-      document.querySelectorAll('.status-dot.red').forEach(d => { d.className = 'status-dot green'; });
-      const warVal = document.getElementById('war-status-val');
       if (warVal) { warVal.textContent = 'CEASEFIRE'; warVal.className = 'status-value green'; }
+      if (warDot) warDot.className = 'status-dot green';
     } else {
       cb.style.display = 'none';
+      if (warVal) { warVal.textContent = 'ACTIVE'; warVal.className = 'status-value red'; }
+      if (warDot) warDot.className = 'status-dot red';
     }
   } catch (e) { /* silent */ }
 }

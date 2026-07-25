@@ -76,3 +76,17 @@ Times of Israel, BBC World, Jerusalem Post — confirmed accessible from Railway
 - Strike counters (`total-launched`, `total-intercepted`) are set by `fetchMissileAlerts()` only — do not add competing `animateCounter()` calls in `DOMContentLoaded` for these elements.
 - `arcPath()` bows perpendicular to the flight path (min 0.4°, max 5.5°) — never a fixed northward bow, which made short southward arcs (Lebanon→Israel) loop backward over their launch point.
 - GNews API key is server-side only (`process.env.GNEWS_API_KEY`). Client never calls GNews directly.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues (`levros7/war-monitor`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
